@@ -38,6 +38,12 @@ Needs Android 7 or newer. That is almost every phone from 2017 onwards.
    and works in offline mode on the phone's own data.
 4. When the laptop is switched on again, the app reconnects on its own.
 
+The laptop also watches the free internet link while the shop is open. It checks
+every couple of minutes and, if the link has stopped answering, it opens a fresh
+one (Cloudflare first, then serveo, then Tunnelmole) and publishes the new
+address. Phones pick it up by themselves within a few minutes, so there is
+nothing to do by hand.
+
 Only if auto-find ever fails: open the app, tap the **AB** mark 5 times, sign in
 as owner, and use **Owner > Settings > Salon server address**. Paste the address
 shown by `ops\status-salon-server.cmd` on the laptop. Only `https://` addresses
