@@ -4,6 +4,7 @@ import com.ayan.salon.server.domain.AuthSession;
 import com.ayan.salon.server.domain.AuthAccount;
 import com.ayan.salon.server.domain.Customer;
 import com.ayan.salon.server.domain.SignInPin;
+import com.ayan.salon.server.domain.SignupGuard;
 import com.ayan.salon.server.domain.OtpChallenge;
 import com.ayan.salon.server.domain.Staff;
 import com.ayan.salon.server.domain.repository.AuthAccountRepository;
@@ -45,6 +46,7 @@ class AuthServiceTest {
     @Mock StaffRepository staff;
     @Mock AuthAccountRepository accounts;
     @Mock SignInPinRepository pins;
+    @Mock com.ayan.salon.server.domain.repository.SignupGuardRepository signupGuards;
     @Mock WalletRepository wallets;
     @Mock OtpChallengeRepository challenges;
     @Mock OtpDeliveryGateway delivery;
@@ -56,8 +58,8 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         sessions = new SessionTokenService(authSessions, "unit-test-secret", Duration.ofHours(1));
-        service = new AuthService(customers, staff, accounts, pins, wallets, challenges, delivery, sessions,
-                Duration.ofMinutes(5), 5);
+        service = new AuthService(customers, staff, accounts, pins, signupGuards, wallets, challenges, delivery, sessions,
+                Duration.ofMinutes(5), 5, 3, 1);
         lenient().when(challenges.countBySalonIdAndPhoneHashAndCreatedAtGreaterThanEqual(eq(salon), anyString(), any(Instant.class)))
                 .thenReturn(0L);
         lenient().doAnswer(invocation -> invocation.getArgument(0)).when(challenges).save(any(OtpChallenge.class));
@@ -119,13 +121,54 @@ class AuthServiceTest {
         SignInPin record = storedPin(customer, "4821");
         when(pins.lockBySalonIdAndActorId(salon, customer.getId())).thenReturn(Optional.of(record));
 
+        // A short keypad PIN is no longer a valid part of the app, so the new
+        // secret must be a 10 to 20 character password.
         assertThrows(AuthService.AuthorizationException.class,
-                () -> service.setActorPin(salon, customer.getId(), "1111", "9090"));
+                () -> service.setActorPin(salon, customer.getId(), "WrongPass123", "NewSecret2026"));
+        assertThrows(IllegalArgumentException.class,
+                () -> service.setActorPin(salon, customer.getId(), "4821", "9090"));
 
-        service.setActorPin(salon, customer.getId(), "4821", "9090");
+        service.setActorPin(salon, customer.getId(), "4821", "NewSecret2026");
 
-        assertTrue(PinHasher.matches("9090", record.getPinSalt(), record.getIterations(), record.getPinHash()),
-                "The stored digest must change to the new PIN");
+        assertTrue(PinHasher.matches("NewSecret2026", record.getPinSalt(), record.getIterations(), record.getPinHash()),
+                "The stored digest must change to the new password");
+    }
+
+    @Test
+    void passwordSignupCreatesTheAccountWithoutAnySmsStep() {
+        when(customers.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(wallets.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SessionTokenService.IssuedSession session = service.registerCustomerWithPassword(
+                salon, phone, "Ali Raza", true, "AliRaza2026x", "device-1", "203.0.113.7", "unit-test");
+
+        assertEquals("CUSTOMER", session.role().name());
+        verify(signupGuards).save(any(SignupGuard.class));
+        verify(challenges, org.mockito.Mockito.never()).save(any(OtpChallenge.class));
+    }
+
+    @Test
+    void passwordSignupRejectsASecondAccountFromTheSameDevice() {
+        SignupGuard claimed = new SignupGuard(salon, "hashed", "hashed-ip", UUID.randomUUID());
+        when(signupGuards.findFirstBySalonIdAndDeviceHash(eq(salon), anyString()))
+                .thenReturn(Optional.of(claimed));
+
+        assertThrows(AuthService.ConflictException.class, () -> service.registerCustomerWithPassword(
+                salon, phone, "Second Person", false, "Second2026xy", "device-1", "203.0.113.7", "unit-test"));
+    }
+
+    @Test
+    void passwordSignupRejectsMoreAccountsThanTheNetworkAllows() {
+        when(signupGuards.countBySalonIdAndIpHash(eq(salon), anyString())).thenReturn(3L);
+
+        assertThrows(AuthService.ConflictException.class, () -> service.registerCustomerWithPassword(
+                salon, phone, "Fourth Person", false, "Fourth2026xy", "device-9", "203.0.113.7", "unit-test"));
+    }
+
+    @Test
+    void passwordSignupStillRefusesAShortPin() {
+        assertThrows(IllegalArgumentException.class, () -> service.registerCustomerWithPassword(
+                salon, phone, "Short Pin", false, "1234", "device-2", "203.0.113.7", "unit-test"));
     }
 
     @Test

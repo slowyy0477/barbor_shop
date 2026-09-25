@@ -42,6 +42,13 @@ public final class ApiDtos {
     public record CustomerProfileRequest(@NotBlank @Size(max = 120) String name,
                                          boolean marketingConsent) {}
     /**
+     * Owner-set replacement password. SMS recovery is switched off, so the
+     * salon owner is the only one who can unlock a customer who forgot the
+     * password. Only the 10 to 20 character password shape is accepted.
+     */
+    public record PasswordResetRequest(
+            @NotBlank @Pattern(regexp = "[A-Za-z0-9@#$%^&*!._+\\-]{10,20}") String password) {}
+    /**
      * A 4 to 6 digit sign-in PIN, or the 10-20 character owner password that
      * the same salted-digest routine accepts. The current secret is required
      * only when one already exists.

@@ -119,17 +119,22 @@ function validOwnerAccessCodeHash(value) {
   return /^[0-9a-f]{8}$/i.test(String(value || ""));
 }
 
-// Sign-in PIN helpers. A customer signs in with a mobile number plus a 4-6 digit
-// PIN. The offline shell keeps only a salted digest in local storage; the online
+// Sign-in password helpers. A customer signs in with a mobile number plus a
+// 10 to 20 character password that mixes letters and digits. SMS verification
+// codes are switched off, so a password is the only secret in the app.
+// The offline shell keeps only a salted digest in local storage; the online
 // server keeps the authoritative PBKDF2 digest and its own lockout counters.
-const SIGN_IN_PIN_PATTERN = /^\d{4,6}$/;
+const SIGN_IN_PIN_PATTERN = /^[A-Za-z0-9@#$%^&*!._+-]{10,20}$/;
+const SIGN_IN_PASSWORD_RULE = "Use 10 to 20 characters with at least one letter and one number.";
 const SIGN_IN_PIN_MAX_ATTEMPTS = 5;
 const SIGN_IN_PIN_LOCK_MS = 15 * 60 * 1000;
-// Deliberately slow for a phone: this runs once per PIN entry, not per screen.
+// Deliberately slow for a phone: this runs once per password entry, not per screen.
 const SIGN_IN_PIN_HASH_ROUNDS = 20000;
 
 function validSignInPin(value) {
-  return SIGN_IN_PIN_PATTERN.test(String(value == null ? "" : value).trim());
+  const text = String(value == null ? "" : value).trim();
+  if (!SIGN_IN_PIN_PATTERN.test(text)) return false;
+  return /[A-Za-z]/.test(text) && /\d/.test(text);
 }
 
 function newSignInPinSalt() {
@@ -159,7 +164,7 @@ function hashSignInPin(pin, salt) {
     first = Math.imul(first, 16777619);
     second = Math.imul(second ^ code, 2246822519);
   }
-  // A four to six digit PIN is a tiny input space, so a single fast pass would be
+  // A 10 to 20 character password is the only secret, so a single fast pass would be
   // guessable by anyone holding the phone's storage. Stretching the digest keeps
   // the offline sign-in check honest without a noticeable wait on a phone.
   for (let round = 0; round < SIGN_IN_PIN_HASH_ROUNDS; round++) {
@@ -273,7 +278,7 @@ const baseState = () => ({
     { provider: "Easypaisa", displayName: "Easypaisa", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Send the exact amount, then submit the reference ID. Owner verifies it manually.", enabled: true, mode: "MANUAL", sortOrder: 1 },
     { provider: "JazzCash", displayName: "JazzCash", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Use the salon account and keep your transaction reference.", enabled: true, mode: "MANUAL", sortOrder: 2 },
     { provider: "NayaPay", displayName: "NayaPay", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Manual verification is required before wallet credit is released.", enabled: true, mode: "MANUAL", sortOrder: 3 },
-    { provider: "SadaPay", displayName: "SadaPay", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Do not share your PIN. Submit only the payment reference.", enabled: true, mode: "MANUAL", sortOrder: 4 }
+    { provider: "SadaPay", displayName: "SadaPay", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Never share your password. Submit only the payment reference.", enabled: true, mode: "MANUAL", sortOrder: 4 }
   ]
 });
 
@@ -332,7 +337,7 @@ function apiSalonId() {
 function apiErrorText(error, fallback = "The online salon service is unavailable.") {
   if (!error) return fallback;
   const message = String(error.message || "").trim();
-  if (error.status === 401) return "Your session has expired. Verify your mobile number again.";
+  if (error.status === 401) return "Your session has expired. Sign in again with your mobile number and password.";
   if (error.status === 429) return "Too many attempts. Please wait a little and try again.";
   return message || fallback;
 }
@@ -1410,10 +1415,7 @@ function ownerLookupModal() {
   const m = ui.modal || {};
   const busy = ui.apiBusy ? "disabled" : "";
   const message = m.error ? `<div class="notice notice-warning" role="alert">${htmlesc(m.error)}</div>` : "";
-  if (m.stage === "otp") {
-    return modalShell("Verify owner mobile", `Enter the six-digit code sent to ${maskPakistaniMobile(m.phone)}.`, `<div class="form-grid"><div class="form-field"><label for="owner-otp">Verification code</label><input id="owner-otp" data-owner-otp inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" ${busy}></div>${message}<div class="notice notice-info">No mobile provider connected yet? Every code is also written on the salon laptop. Run <strong>ops\\show-last-code.cmd</strong> there, read the newest code and type it here. Codes expire in about five minutes.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft btn-small" data-action="owner-use-password" ${busy}>Use password</button><button class="btn btn-secondary btn-small" data-action="resend-owner-otp" ${busy}>Send again</button><button class="btn btn-primary" data-action="verify-owner-otp" ${busy}>Verify & open</button>`);
-  }
-  return modalShell("Owner sign in", "Type the owner password. Customers never see this workspace.", `<div class="form-grid"><div class="form-field"><label for="owner-secret">Owner password</label><input id="owner-secret" data-owner-secret type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="10 to 20 characters" ${busy}><small>On the salon laptop run ops\\show-owner-password.cmd if you forgot it. Five wrong tries pause sign-in for 15 minutes.</small></div><div class="form-field"><label for="owner-phone">Owner mobile (optional)</label><input id="owner-phone" data-owner-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="Leave empty to use the password alone" value="${htmlesc(m.phone || "")}" ${busy}><small>Only needed for the "Send code instead" option, or when you want to sign in with a short 4 to 6 digit PIN.</small></div>${message}<div class="notice notice-info">The password is stored only as a salted digest on your own laptop. Prefer a mobile code? Tap "Send code instead" and read the newest code with ops\\show-last-code.cmd.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="request-owner-otp" ${busy}>Send code instead</button><button class="btn btn-primary" data-action="owner-password-login" ${busy}>Sign in</button>`);
+  return modalShell("Owner sign in", "Type the owner password. Customers never see this workspace.", `<div class="form-grid"><div class="form-field"><label for="owner-secret">Owner password</label><input id="owner-secret" data-owner-secret type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="10 to 20 characters" ${busy}><small>On the salon laptop run ops\\show-owner-password.cmd if you forgot it. Five wrong tries pause sign-in for 15 minutes.</small></div><div class="form-field"><label for="owner-phone">Owner mobile (optional)</label><input id="owner-phone" data-owner-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="Leave empty to use the password alone" value="${htmlesc(m.phone || "")}" ${busy}><small>Add the owner mobile number when you want a second check. The password alone also works.</small></div>${message}<div class="notice notice-info">No SMS is used anywhere in this app. The password is stored only as a salted digest on your own laptop.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="owner-password-login" ${busy}>Sign in</button>`);
 }
 function ownerCodeModal() {
   return modalShell("Change owner code", "Choose a new code for the private owner workspace.", `<div class="form-grid"><div class="form-field"><label for="new-owner-code">New access code</label><input id="new-owner-code" type="password" inputmode="text" autocomplete="new-password" data-new-owner-code placeholder="6 to 32 letters or numbers"></div><div class="form-field"><label for="confirm-owner-code">Confirm access code</label><input id="confirm-owner-code" type="password" inputmode="text" autocomplete="new-password" data-confirm-owner-code placeholder="Repeat the new code"></div><small>The code is stored locally as a digest. Keep it private and replace the initial code before distribution.</small></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="save-owner-code">Save new code</button>`);
@@ -1784,145 +1786,13 @@ async function finishApiSession(session, context = {}) {
   if (context.returnToBooking && role === "CUSTOMER") openBooking({ customerId: state.currentCustomerId, source: "Direct" });
 }
 
-async function requestApiOtp(registration = false) {
-  const modalState = ui.modal || { type: "lookup" };
-  // The registration step has its own mobile field, and the customer may
-  // correct the number there, so read that field first. Reading only the
-  // earlier stage sent an empty number and bounced the customer back to the
-  // sign-in screen instead of creating the profile.
-  const typedRegistrationPhone = registration
-    ? String(document.querySelector("[data-api-customer-phone]")?.value || "").trim()
-    : "";
-  let phone = "";
-  try {
-    phone = canonicalPakistaniPhone(registration ? (typedRegistrationPhone || modalState.phone || "") : apiPhoneInput());
-  } catch (_) {
-    phone = "";
-  }
-  if (!isValidPakistaniMobile(phone)) {
-    modalState.error = registration
-      ? "Enter the complete mobile number that should receive the code, for example 0300 123 4567."
-      : "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
-    if (registration && typedRegistrationPhone) modalState.phone = typedRegistrationPhone;
-    modalState.stage = registration ? "register" : "phone";
-    ui.modal = modalState;
-    render();
-    return;
-  }
-  if (registration) {
-    const name = document.querySelector("[data-api-customer-name]")?.value.trim() || modalState.name || "";
-    const consent = !!document.querySelector("[data-api-customer-consent]")?.checked;
-    const pin = String(document.querySelector("[data-api-customer-pin]")?.value || "").trim();
-    const confirmPin = String(document.querySelector("[data-api-customer-pin-confirm]")?.value || "").trim();
-    if (!name) { modalState.error = "Enter your name before requesting the verification code."; render(); return; }
-    if (!validSignInPin(pin)) { modalState.error = "Create a 4 to 6 digit PIN for this profile."; render(); return; }
-    if (pin !== confirmPin) { modalState.error = "Both PIN entries must match."; render(); return; }
-    modalState.name = name;
-    modalState.consent = consent;
-    modalState.pin = pin;
-  }
-  ui.apiBusy = true;
-  modalState.error = "";
-  modalState.phone = phone;
-  render();
-  try {
-    const result = await window.AyanApi.requestOtp(phone, apiSalonId());
-    modalState.challengeId = String(result?.challengeId || "");
-    if (!modalState.challengeId) throw new Error("The OTP challenge response was invalid.");
-    modalState.stage = registration ? "register-otp" : "otp";
-    modalState.unknown = false;
-    modalState.expiresAt = result?.expiresAt || null;
-  } catch (error) {
-    modalState.error = apiErrorText(error, "Could not send a verification code.");
-    if (error?.status === 429) modalState.error = "Too many code requests. Please wait a little and try again.";
-  } finally {
-    ui.apiBusy = false;
-    ui.modal = modalState;
-    render();
-  }
-}
 
-async function requestOwnerOtp() {
-  const modalState = ui.modal || { type: "owner-lookup", stage: "phone" };
-  const phone = canonicalPakistaniPhone(document.querySelector("[data-owner-phone]")?.value || modalState.phone || "");
-  if (!isValidPakistaniMobile(phone)) {
-    modalState.error = "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
-    modalState.stage = "phone";
-    ui.modal = modalState;
-    render();
-    return;
-  }
-  ui.apiBusy = true;
-  modalState.error = "";
-  modalState.phone = phone;
-  render();
-  try {
-    const result = await window.AyanApi.requestOtp(phone, apiSalonId());
-    modalState.challengeId = String(result?.challengeId || "");
-    if (!modalState.challengeId) throw new Error("The OTP challenge response was invalid.");
-    modalState.stage = "otp";
-    modalState.expiresAt = result?.expiresAt || null;
-  } catch (error) {
-    modalState.error = apiErrorText(error, "Could not send the owner verification code.");
-  } finally {
-    ui.apiBusy = false;
-    ui.modal = modalState;
-    render();
-  }
-}
 
-async function verifyOwnerOtp() {
-  const modalState = ui.modal || {};
-  const code = String(document.querySelector("[data-owner-otp]")?.value || "").trim();
-  if (!/^\d{6}$/.test(code)) {
-    modalState.error = "Enter the six-digit verification code.";
-    render();
-    return;
-  }
-  if (!modalState.challengeId) {
-    modalState.error = "Request a fresh verification code first.";
-    modalState.stage = "phone";
-    render();
-    return;
-  }
-  ui.apiBusy = true;
-  modalState.error = "";
-  render();
-  let handled = false;
-  try {
-    const session = await window.AyanApi.verifyOtp(modalState.challengeId, code, apiSalonId());
-    const role = String(session?.role || "").toUpperCase();
-    if (!["OWNER", "MANAGER", "BARBER", "STAFF", "RECEPTIONIST"].includes(role)) {
-      window.AyanApi.clearSession();
-      throw new Error("This mobile is a customer account. Owner access is not available.");
-    }
-    await finishApiSession(session);
-    handled = true;
-  } catch (error) {
-    if (apiSessionExpired(error)) {
-      modalState.error = "The owner session could not be established. Request a fresh code.";
-      modalState.stage = "phone";
-      modalState.challengeId = "";
-    } else {
-      modalState.error = apiErrorText(error, "That owner code could not be verified.");
-      if (/customer account/i.test(String(error?.message || ""))) {
-        modalState.stage = "phone";
-        modalState.challengeId = "";
-      }
-    }
-  } finally {
-    if (!handled) {
-      ui.apiBusy = false;
-      ui.modal = modalState;
-      render();
-    }
-  }
-}
 
 /**
- * Owner sign-in with the longer owner password (or the legacy 4-6 digit PIN).
- * This path needs no mobile provider, which is what makes owner sign-in work on
- * a laptop that has no SMS account connected yet.
+ * Owner sign-in with the owner password alone. SMS codes are switched off, so
+ * this is the only owner path and it works on a laptop that has no SMS account
+ * connected at all.
  */
 async function submitOwnerPassword() {
   const modalState = ui.modal || { type: "owner-lookup" };
@@ -1941,15 +1811,8 @@ async function submitOwnerPassword() {
     render();
     return;
   }
-  if (secret.length < 4) {
-    modalState.error = "Enter the owner password (10 to 20 characters). Without a mobile number a short PIN cannot be used.";
-    modalState.stage = "password";
-    ui.modal = modalState;
-    render();
-    return;
-  }
-  if (!phone && secret.length < 10) {
-    modalState.error = "Type the owner mobile number as well, or use the full 10 to 20 character owner password.";
+  if (!validSignInPin(secret)) {
+    modalState.error = `Enter the owner password. ${SIGN_IN_PASSWORD_RULE}`;
     modalState.stage = "password";
     ui.modal = modalState;
     render();
@@ -1970,7 +1833,7 @@ async function submitOwnerPassword() {
     handled = true;
     return;
   } catch (error) {
-    modalState.error = apiErrorText(error, "That password or PIN was not accepted.");
+    modalState.error = apiErrorText(error, "That mobile number and password were not accepted.");
     modalState.stage = "password";
   } finally {
     if (!handled) {
@@ -1981,49 +1844,6 @@ async function submitOwnerPassword() {
   }
 }
 
-async function verifyApiOtp() {
-  const modalState = ui.modal || {};
-  const code = String(document.querySelector("[data-lookup-otp]")?.value || "").trim();
-  if (!/^\d{6}$/.test(code)) { modalState.error = "Enter the six-digit verification code."; render(); return; }
-  if (!modalState.challengeId) { modalState.error = "Request a fresh verification code first."; modalState.stage = "phone"; render(); return; }
-  ui.apiBusy = true;
-  modalState.error = "";
-  render();
-  let sessionHandled = false;
-  try {
-    let session;
-    if (modalState.stage === "register-otp") {
-      session = await window.AyanApi.registerCustomer(modalState.challengeId, code, modalState.phone,
-        modalState.name, modalState.consent === true, apiSalonId(), modalState.pin || "");
-    } else {
-      session = await window.AyanApi.verifyOtp(modalState.challengeId, code, apiSalonId());
-    }
-    await finishApiSession(session, { returnToBooking: modalState.returnToBooking === true });
-    sessionHandled = true;
-    return;
-  } catch (error) {
-    // The server consumes a challenge before it checks whether an account
-    // exists. Registration therefore starts with a new challenge, never a
-    // replay of the consumed verification code.
-    if (apiSessionExpired(error)) {
-      modalState.error = "Your session could not be established. Request a fresh verification code.";
-      modalState.stage = "phone";
-      modalState.challengeId = "";
-    } else if (modalState.stage === "otp" && error?.status === 401 && /no active salon account/i.test(String(error.message || ""))) {
-      modalState.unknown = true;
-      modalState.stage = "otp";
-      modalState.error = "No profile exists for this mobile. Create a new profile to continue.";
-    } else {
-      modalState.error = apiErrorText(error, "That code could not be verified. Request a new code and try again.");
-    }
-  } finally {
-    if (!sessionHandled) {
-      ui.apiBusy = false;
-      ui.modal = modalState;
-      render();
-    }
-  }
-}
 
 function handleAction(e) {
   const el=e.currentTarget, action=el.dataset.action;
@@ -2060,11 +1880,6 @@ function handleAction(e) {
   if (ownerOnlyActions.has(action) && !requireOwnerSession()) return;
   if(action === "close-modal") { if(e.target.closest("[data-modal-content]") && e.target !== el) return; ui.modal=null; render(); return; }
   if (action === "retry-api") { bootstrapApi(); return; }
-  if (action === "request-owner-otp") { requestOwnerOtp(); return; }
-  if (action === "resend-owner-otp") { requestOwnerOtp(); return; }
-  if (action === "verify-owner-otp") { verifyOwnerOtp(); return; }
-  if (action === "request-otp") { requestApiOtp(false); return; }
-  if (action === "resend-otp") { requestApiOtp(false); return; }
   if (action === "begin-registration") {
     if (ui.modal) {
       // Carry the number the customer already typed into the registration form.
@@ -2077,17 +1892,14 @@ function handleAction(e) {
     return;
   }
   if (action === "back-to-phone") { if (ui.modal) { ui.modal.stage = "phone"; ui.modal.error = ""; render(); } return; }
-  if (action === "back-to-registration") { if (ui.modal) { ui.modal.stage = "register"; ui.modal.error = ""; render(); } return; }
-  if (action === "request-registration-otp") { requestApiOtp(true); return; }
-  if (action === "verify-otp") { verifyApiOtp(); return; }
+  if (action === "submit-registration") { submitCustomerRegistration(); return; }
   if (action === "owner-password-login") { submitOwnerPassword(); return; }
-  if (action === "owner-use-password") { if (ui.modal) { ui.modal.stage = "password"; ui.modal.error = ""; render(); setTimeout(() => document.querySelector("[data-owner-secret]")?.focus(), 0); } return; }
   if(action === "open-booking") { openBooking({serviceId:el.dataset.serviceId,customerId:el.dataset.customerId,source:el.dataset.source}); return; }
   if(action === "book-haircut-style") { const style = (state.haircutStyles || []).find((item) => item.id === el.dataset.styleId); if (style?.serviceId && service(style.serviceId)?.active) openBooking({ serviceId: style.serviceId, source: "Style card" }); else toast("Ask the salon owner to link this style to a bookable service.", "error"); return; }
   if(action === "customer-lookup") { ui.modal={type:"lookup",phone:"",searched:false,stage:apiModeEnabled()?"phone":undefined};render();return; }
   if(action === "search-customer") {
     const input=document.querySelector("[data-lookup-phone]");ui.modal.phone=input?.value||"";ui.modal.searched=true;ui.modal.error="";
-    // A single exact mobile match moves straight to the PIN gate; the mobile
+    // A single exact mobile match moves straight to the password gate; the mobile
     // number alone must never open customer data.
     const normalized = canonicalPakistaniPhone(ui.modal.phone);
     const found = isValidPakistaniMobile(normalized)
@@ -2100,6 +1912,7 @@ function handleAction(e) {
   if(action === "submit-api-pin") { submitApiPin();return; }
   if(action === "save-sign-in-pin") { saveSignInPin();return; }
   if(action === "reset-customer-pin") { resetCustomerPinFromOwner(el.dataset.customerId);return; }
+  if(action === "set-customer-password") { setCustomerSignInPassword(el.dataset.customerId);return; }
   if(action === "save-server-url") { saveServerAddress();return; }
   if(action === "clear-server-url") { clearServerAddress();return; }
   if(action === "apply-phone-branding") { applyPhoneBranding();return; }
@@ -2976,19 +2789,25 @@ function customerModal() {
   const referralField = isNew ? `<div class="form-field"><label>Referral code (optional)</label><input data-customer-referral-code placeholder="e.g. SALON100" autocomplete="off"><small>Applied only after this mobile is verified and before the first paid visit.</small></div>` : "";
   const existingPin = !m.signup && m.customerId ? (state.customers || []).find((item) => item.id === m.customerId) : null;
   const pinFields = m.signup && !apiModeEnabled()
-    ? `<div class="form-grid two"><div class="form-field"><label>Create a 4 to 6 digit PIN</label><input data-customer-pin type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••"><small>Your mobile number plus this PIN open your profile.</small></div><div class="form-field"><label>Confirm PIN</label><input data-customer-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••"></div></div>`
+    ? `<div class="form-grid two"><div class="form-field"><label>Create a password</label><input data-customer-pin type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="10 to 20 characters"><small>Your mobile number plus this password open your profile. ${SIGN_IN_PASSWORD_RULE}</small></div><div class="form-field"><label>Confirm password</label><input data-customer-pin-confirm type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="Repeat the password"></div></div>`
     : "";
   const pinReset = existingPin && customerHasPin(existingPin) && !apiModeEnabled()
-    ? `<div class="notice notice-info" style="margin-top:12px">Sign-in PIN is set for this customer. <button class="btn btn-soft btn-small" style="margin-top:8px" data-action="reset-customer-pin" data-customer-id="${htmlesc(existingPin.id)}">Reset sign-in PIN</button></div>`
+    ? `<div class="notice notice-info" style="margin-top:12px">A sign-in password is set for this customer. <button class="btn btn-soft btn-small" style="margin-top:8px" data-action="reset-customer-pin" data-customer-id="${htmlesc(existingPin.id)}">Reset password</button></div>`
     : "";
-  return modalShell(title, "A mobile number is the customer lookup key. Promotional messages require clear consent.", `<div class="form-grid"><div class="form-grid two"><div class="form-field"><label>Name</label><input data-customer-name value="${htmlesc(c.name)}" autocomplete="name"></div><div class="form-field"><label>Mobile</label><input data-customer-phone value="${htmlesc(c.phone)}" type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx"></div></div>${pinFields}${referralField}<label class="check-row"><input type="checkbox" data-customer-consent ${c.consent ? "checked" : ""}> Customer agrees to promotional messages and service reminders.</label>${pinReset}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="save-customer" data-customer-id="${m.customerId || ""}">${m.signup ? "Create profile" : "Save profile"}</button>`);
+  // No SMS code exists any more, so a customer who forgot the password can only
+  // be helped at the counter. This is that control, and it works on the server
+  // so the new password signs the customer in on their own phone immediately.
+  const apiPinReset = existingPin && apiModeEnabled()
+    ? `<div class="surface" style="margin-top:14px;padding:14px"><div class="section-head"><div><h3 style="margin:0;font-size:15px">Sign-in password</h3><span class="list-meta" style="font-size:12px">Owner only</span></div></div><p class="list-meta" style="font-size:13px;margin:7px 0 11px">Forgot password? Set a new one here, then ask the customer to change it from More once they are signed in.</p><div class="form-field"><label for="customer-new-password">New password</label><input id="customer-new-password" data-customer-new-password type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="10 to 20 characters"><small>${SIGN_IN_PASSWORD_RULE}</small></div><button class="btn btn-secondary" data-action="set-customer-password" data-customer-id="${htmlesc(existingPin.id)}">Set new password</button></div>`
+    : "";
+  return modalShell(title, "A mobile number is the customer lookup key. Promotional messages require clear consent.", `<div class="form-grid"><div class="form-grid two"><div class="form-field"><label>Name</label><input data-customer-name value="${htmlesc(c.name)}" autocomplete="name"></div><div class="form-field"><label>Mobile</label><input data-customer-phone value="${htmlesc(c.phone)}" type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx"></div></div>${pinFields}${referralField}<label class="check-row"><input type="checkbox" data-customer-consent ${c.consent ? "checked" : ""}> Customer agrees to promotional messages and service reminders.</label>${pinReset}${apiPinReset}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="save-customer" data-customer-id="${m.customerId || ""}">${m.signup ? "Create profile" : "Save profile"}</button>`);
 }
 
 function otpModal() {
   return lookupModal();
 }
 
-/** Opens the signed-in customer workspace without exposing data before the PIN check. */
+/** Opens the signed-in customer workspace without exposing data before the password check. */
 function signInOfflineCustomer(target) {
   state.currentCustomerId = target.id;
   clearPinFailures(target.id);
@@ -2999,7 +2818,7 @@ function signInOfflineCustomer(target) {
   render();
 }
 
-/** Offline PIN gate: verify the stored digest, or create the first PIN for this profile. */
+/** Offline password gate: verify the stored digest, or create the first password for this profile. */
 function submitOfflineLookupPin(customerId) {
   const modalState = ui.modal || { type: "lookup" };
   const target = (state.customers || []).find((customer) => customer.id === customerId);
@@ -3007,19 +2826,19 @@ function submitOfflineLookupPin(customerId) {
   const lockedMinutes = pinLockRemainingMinutes(target.id);
   if (lockedMinutes) { modalState.error = `Too many incorrect attempts. Try again in about ${lockedMinutes} minute${lockedMinutes === 1 ? "" : "s"}.`; render(); return; }
   const pin = String(document.querySelector("[data-lookup-pin]")?.value || "").trim();
-  if (!validSignInPin(pin)) { modalState.error = "Enter a 4 to 6 digit PIN."; render(); return; }
+  if (!validSignInPin(pin)) { modalState.error = SIGN_IN_PASSWORD_RULE; render(); return; }
   if (!customerHasPin(target)) {
     const confirmPin = String(document.querySelector("[data-lookup-pin-confirm]")?.value || "").trim();
-    if (pin !== confirmPin) { modalState.error = "Both PIN entries must match."; render(); return; }
+    if (pin !== confirmPin) { modalState.error = "Both password entries must match."; render(); return; }
     assignCustomerPin(target, pin);
     saveState();
     signInOfflineCustomer(target);
-    toast("PIN created. Keep it private.");
+    toast("Password created. Keep it private.");
     return;
   }
   if (!verifyCustomerPin(target, pin)) {
     registerPinFailure(target.id);
-    modalState.error = "Incorrect PIN. Try again.";
+    modalState.error = "Incorrect password. Try again.";
     render();
     return;
   }
@@ -3027,46 +2846,49 @@ function submitOfflineLookupPin(customerId) {
   toast(`Signed in as ${customerName(target.id)}`);
 }
 
-/** Online mobile + PIN sign-in; the verification code remains the recovery path. */
+/**
+ * Online sign-in: the mobile number plus the account password, in one step.
+ * SMS verification codes are switched off everywhere, so there is no code
+ * screen and no fallback to wait for.
+ */
 function submitApiPin() {
   const modalState = ui.modal || { type: "lookup" };
-  if (modalState.stage !== "pin") {
-    const phone = apiPhoneInput();
-    if (!isValidPakistaniMobile(phone)) {
-      modalState.error = "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
-      modalState.stage = "phone";
-      ui.modal = modalState;
-      render();
-      return;
-    }
-    modalState.phone = phone;
-    modalState.stage = "pin";
-    modalState.error = "";
-    modalState.pinMissing = false;
+  const phone = apiPhoneInput();
+  if (!isValidPakistaniMobile(phone)) {
+    modalState.error = "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
+    modalState.stage = "phone";
     ui.modal = modalState;
     render();
     return;
   }
-  const pin = String(document.querySelector("[data-lookup-pin]")?.value || "").trim();
-  if (!validSignInPin(pin)) { modalState.error = "Enter a 4 to 6 digit PIN."; render(); return; }
+  const password = String(document.querySelector("[data-lookup-password]")?.value || "").trim();
+  if (!validSignInPin(password)) {
+    modalState.error = `Enter your password. ${SIGN_IN_PASSWORD_RULE}`;
+    modalState.stage = "phone";
+    ui.modal = modalState;
+    render();
+    return;
+  }
   ui.apiBusy = true;
   modalState.error = "";
+  modalState.phone = phone;
   render();
   let sessionHandled = false;
   (async () => {
     try {
-      const session = await window.AyanApi.verifyPin(modalState.phone, pin, apiSalonId());
+      const session = await window.AyanApi.verifyPin(phone, password, apiSalonId());
       sessionHandled = true;
       await finishApiSession(session, { returnToBooking: modalState.returnToBooking === true });
       return;
     } catch (error) {
       if (String(error?.code || "") === "PIN_NOT_SET" || error?.status === 404) {
-        modalState.pinMissing = true;
-        modalState.error = "No PIN is set for this number yet. Sign in with the verification code, then create a PIN from your profile.";
+        modalState.error = "This mobile number has no password yet. Tap Create new account, or ask the salon owner to set one.";
+      } else if (error?.status === 401) {
+        modalState.error = "Wrong mobile number or password. Check both and try again.";
       } else if (error?.status === 429) {
-        modalState.error = "Too many attempts. Wait a moment, or use the verification code instead.";
+        modalState.error = "Too many attempts. Please wait a few minutes and try again.";
       } else {
-        modalState.error = apiErrorText(error, "That PIN could not be verified. Use the verification code instead.");
+        modalState.error = apiErrorText(error, "Sign in failed. Check the mobile number and the password.");
       }
     } finally {
       if (!sessionHandled) {
@@ -3078,13 +2900,74 @@ function submitApiPin() {
   })();
 }
 
-/** Sets or changes the signed-in customer's PIN from the profile screen. */
+/**
+ * Creates the customer account from the mobile number and the chosen password.
+ * Nothing else is required: there is no verification code to wait for.
+ */
+function submitCustomerRegistration() {
+  const modalState = ui.modal || { type: "lookup", stage: "register" };
+  const name = String(document.querySelector("[data-api-customer-name]")?.value || modalState.name || "").trim();
+  const typedPhone = String(document.querySelector("[data-api-customer-phone]")?.value || modalState.phone || "").trim();
+  let phone = "";
+  try { phone = canonicalPakistaniPhone(typedPhone); } catch (_) { phone = ""; }
+  const password = String(document.querySelector("[data-api-customer-password]")?.value || "").trim();
+  const confirmation = String(document.querySelector("[data-api-customer-password-confirm]")?.value || "").trim();
+  const consent = !!document.querySelector("[data-api-customer-consent]")?.checked;
+  modalState.stage = "register";
+  modalState.name = name;
+  modalState.phone = typedPhone;
+  modalState.consent = consent;
+  if (!name) { modalState.error = "Enter your name."; ui.modal = modalState; render(); return; }
+  if (!isValidPakistaniMobile(phone)) {
+    modalState.error = "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
+    ui.modal = modalState;
+    render();
+    return;
+  }
+  if (!validSignInPin(password)) {
+    modalState.error = `Choose a password. ${SIGN_IN_PASSWORD_RULE}`;
+    ui.modal = modalState;
+    render();
+    return;
+  }
+  if (password !== confirmation) { modalState.error = "Both password entries must match."; ui.modal = modalState; render(); return; }
+  ui.apiBusy = true;
+  modalState.error = "";
+  modalState.phone = phone;
+  render();
+  let sessionHandled = false;
+  (async () => {
+    try {
+      const session = await window.AyanApi.signupCustomer(phone, name, password, consent, apiSalonId());
+      sessionHandled = true;
+      await finishApiSession(session, { returnToBooking: modalState.returnToBooking === true });
+      toast("Account created. Your mobile number and password sign you in.");
+      return;
+    } catch (error) {
+      if (error?.status === 409) {
+        modalState.error = apiErrorText(error, "An account already exists for this mobile number. Sign in instead.");
+      } else if (error?.status === 429) {
+        modalState.error = "Too many attempts from this connection. Please wait a few minutes and try again.";
+      } else {
+        modalState.error = apiErrorText(error, "The account could not be created. Please try again.");
+      }
+    } finally {
+      if (!sessionHandled) {
+        ui.apiBusy = false;
+        ui.modal = modalState;
+        render();
+      }
+    }
+  })();
+}
+
+/** Sets or changes the signed-in customer's password from the profile screen. */
 function saveSignInPin() {
   const current = String(document.querySelector("[data-pin-current]")?.value || "").trim();
   const next = String(document.querySelector("[data-pin-new]")?.value || "").trim();
   const confirmation = String(document.querySelector("[data-pin-confirm]")?.value || "").trim();
-  if (!validSignInPin(next)) { toast("Choose a 4 to 6 digit PIN.", "error"); return; }
-  if (next !== confirmation) { toast("Both PIN entries must match.", "error"); return; }
+  if (!validSignInPin(next)) { toast(SIGN_IN_PASSWORD_RULE, "error"); return; }
+  if (next !== confirmation) { toast("Both password entries must match.", "error"); return; }
   if (apiModeEnabled()) {
     ui.apiBusy = true;
     render();
@@ -3092,10 +2975,10 @@ function saveSignInPin() {
       try {
         await window.AyanApi.setPin(next, current, apiSalonId());
         ui.apiBusy = false;
-        toast("Sign-in PIN saved on the salon server.");
+        toast("Password saved on the salon server.");
       } catch (error) {
         ui.apiBusy = false;
-        toast(apiErrorText(error, "The sign-in PIN could not be saved."), "error");
+        toast(apiErrorText(error, "The password could not be saved."), "error");
       }
       render();
     })();
@@ -3107,38 +2990,67 @@ function saveSignInPin() {
   if (lockedMinutes) { toast(`Too many incorrect attempts. Try again in about ${lockedMinutes} minute${lockedMinutes === 1 ? "" : "s"}.`, "error"); return; }
   if (customerHasPin(target) && !verifyCustomerPin(target, current)) {
     registerPinFailure(target.id);
-    toast("Current PIN is incorrect.", "error");
+    toast("Your current password is incorrect.", "error");
     render();
     return;
   }
   assignCustomerPin(target, next);
   saveState();
-  toast("Sign-in PIN saved on this phone.");
+  toast("Password saved on this phone.");
   render();
 }
 
-/** Owner-side reset so a customer who forgot the PIN can set a new one. */
+/**
+ * Owner sets a brand new sign-in password for one customer. SMS recovery does
+ * not exist, so this is the counter-side reset: the customer walks up, the
+ * owner types a fresh password, and the customer signs in with it on their own
+ * phone and changes it from More.
+ */
+function setCustomerSignInPassword(customerId) {
+  const password = String(document.querySelector("[data-customer-new-password]")?.value || "").trim();
+  if (!customerId) { toast("Choose a customer first.", "error"); return; }
+  if (!validSignInPin(password)) { toast(SIGN_IN_PASSWORD_RULE, "error"); return; }
+  if (!apiModeEnabled()) {
+    toast("Connect the salon server before setting a customer password.", "error");
+    return;
+  }
+  ui.apiBusy = true;
+  render();
+  (async () => {
+    try {
+      await window.AyanApi.resetCustomerPassword(customerId, password, apiSalonId());
+      toast("New password saved. Ask the customer to sign in and change it from More.");
+    } catch (error) {
+      toast(apiErrorText(error, "The customer password could not be saved."), "error");
+    } finally {
+      ui.apiBusy = false;
+      render();
+    }
+  })();
+}
+
+/** Owner-side reset so a customer who forgot the password can set a new one. */
 function resetCustomerPinFromOwner(customerId) {
   if (!requireOwnerSession()) return;
   const target = (state.customers || []).find((customer) => customer.id === customerId);
   if (!target) { toast("Customer record not found.", "error"); return; }
-  const confirmed = window.confirm(`Clear the sign-in PIN for ${target.name}? They will set a new PIN on the next sign-in.`);
+  const confirmed = window.confirm(`Clear the sign-in password for ${target.name}? They will set a new password on the next sign-in.`);
   if (!confirmed) return;
   resetCustomerPin(target);
-  state.audit.push({ id: uid("audit"), action: "Sign-in PIN reset", actor: "Owner", reason: `${target.name} · PIN cleared by owner`, createdAt: new Date().toISOString() });
+  state.audit.push({ id: uid("audit"), action: "Sign-in password reset", actor: "Owner", reason: `${target.name} · password cleared by owner`, createdAt: new Date().toISOString() });
   saveState();
   ui.modal = null;
-  toast("PIN cleared. The customer sets a new PIN on the next sign-in.");
+  toast("Password cleared. The customer sets a new password on the next sign-in.");
   render();
 }
 
 function pinSecurityPanel() {
   const target = customer();
-  const label = customerHasPin(target) ? "PIN set" : "Not set yet";
+  const label = customerHasPin(target) ? "Password set" : "Not set yet";
   const intro = apiModeEnabled()
-    ? "Set a 4 to 6 digit PIN so your mobile number and PIN open your profile without waiting for a code. Keep the code option for recovery."
-    : "Set a 4 to 6 digit PIN so your mobile number and PIN open your profile on this phone. Five wrong attempts pause sign-in for 15 minutes.";
-  return `<div class="surface panel"><div class="section-head"><h2>Sign-in PIN</h2><span class="tag ${customerHasPin(target) ? "tag-success" : "tag-neutral"}">${label}</span></div><p class="list-meta" style="font-size:13px;margin-bottom:15px">${intro}</p><div class="form-grid two"><div class="form-field"><label>New PIN</label><input data-pin-new type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••"></div><div class="form-field"><label>Confirm new PIN</label><input data-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••"></div></div><div class="form-field"><label>Current PIN (only when changing an existing PIN)</label><input data-pin-current type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="••••"></div><button class="btn btn-primary" data-action="save-sign-in-pin">${customerHasPin(target) ? "Change PIN" : "Create PIN"}</button></div>`;
+    ? "Your mobile number and this password open your profile. No SMS code is used anywhere in this app."
+    : "Your mobile number and this password open your profile on this phone. Five wrong attempts pause sign-in for 15 minutes.";
+  return `<div class="surface panel"><div class="section-head"><h2>Sign-in password</h2><span class="tag ${customerHasPin(target) ? "tag-success" : "tag-neutral"}">${label}</span></div><p class="list-meta" style="font-size:13px;margin-bottom:15px">${intro}</p><div class="form-grid two"><div class="form-field"><label>New password</label><input data-pin-new type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="10 to 20 characters"></div><div class="form-field"><label>Confirm new password</label><input data-pin-confirm type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="Repeat the password"></div></div><div class="form-field"><label>Current password (only when changing it)</label><input data-pin-current type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="Your current password"></div><button class="btn btn-primary" data-action="save-sign-in-pin">${customerHasPin(target) ? "Change password" : "Create password"}</button></div>`;
 }
 
 /** Only the installed Android shell can change the salon server address. */
@@ -3226,31 +3138,10 @@ function lookupModal() {
     const stage = m.stage || "phone";
     const message = m.error ? `<div class="notice notice-warning" role="alert">${htmlesc(m.error)}</div>` : "";
     const busy = ui.apiBusy ? "disabled" : "";
-    if (stage === "pin") {
-      const pinHint = m.pinMissing
-        ? `<div class="notice notice-info">No PIN is set for this number yet. Sign in with the verification code, then create a PIN from your profile.</div>`
-        : `<div class="notice notice-info">Your mobile number and PIN open this salon profile. The verification code still works if you forget the PIN.</div>`;
-      return modalShell("Sign in with mobile + PIN", `Enter the PIN that belongs to ${maskPakistaniMobile(phone)}.`, `<div class="form-grid"><div class="form-field"><label for="lookup-pin">Sign-in PIN</label><input id="lookup-pin" data-lookup-pin type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="••••" ${busy} ${m.pinMissing ? "disabled" : ""}><small>4 to 6 digits. Five wrong attempts pause sign-in for 15 minutes.</small></div>${message}${pinHint}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="request-otp" ${busy}>Use verification code</button><button class="btn btn-primary" data-action="submit-api-pin" ${busy} ${m.pinMissing ? "disabled" : ""}>Sign in</button>`);
-    }
-    if (stage === "otp" || stage === "register-otp") {
-      const registration = stage === "register-otp";
-      const title = registration ? "Verify new profile" : "Verify your mobile";
-      const description = registration
-        ? `Enter the fresh six-digit code sent to ${maskPakistaniMobile(phone)} to finish creating your profile.`
-        : `Enter the six-digit code sent to ${maskPakistaniMobile(phone)}. Your profile opens only after verification.`;
-      const switchAction = registration
-        ? `<button class="btn btn-secondary btn-small" data-action="back-to-registration" ${busy}>Back</button>`
-        : `<button class="btn btn-secondary btn-small" data-action="resend-otp" ${busy}>Send again</button>`;
-      const unknownHint = !registration && m.unknown
-        ? `<div class="notice notice-info">No existing profile was found. You can create one after this code step.</div><button class="btn btn-soft btn-small" data-action="begin-registration" ${busy}>Create new profile</button>`
-        : "";
-      const codeHelp = `<div class="notice notice-info">No SMS is connected yet, so the newest code is written on the salon laptop. On that laptop run <strong>ops\\show-last-code.cmd</strong> to read it out. Codes expire in about five minutes and work once.</div>`;
-      return modalShell(title, description, `<div class="form-grid"><div class="form-field"><label for="lookup-otp">Verification code</label><input id="lookup-otp" data-lookup-otp inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" ${busy}><small>Codes expire shortly and can be used only once.</small></div>${message}${unknownHint}${codeHelp}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button>${switchAction}<button class="btn btn-primary" data-action="verify-otp" ${busy}>${registration ? "Create profile" : "Verify & continue"}</button>`);
-    }
     if (stage === "register") {
-      return modalShell("Create your salon profile", `First verify the mobile number, then we will create a profile for this salon.`, `<div class="form-grid"><div class="form-field"><label for="api-customer-phone">Mobile number</label><input id="api-customer-phone" data-api-customer-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>This number becomes your profile key and receives the verification code.</small></div><div class="form-field"><label for="api-customer-name">Your name</label><input id="api-customer-name" data-api-customer-name autocomplete="name" placeholder="Full name" value="${htmlesc(m.name || "")}" ${busy}></div><div class="form-grid two"><div class="form-field"><label for="api-customer-pin">Create a 4 to 6 digit PIN</label><input id="api-customer-pin" data-api-customer-pin type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${busy}><small>Next time your mobile number and this PIN sign you in without a code.</small></div><div class="form-field"><label for="api-customer-pin-confirm">Confirm PIN</label><input id="api-customer-pin-confirm" data-api-customer-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${busy}></div></div><label class="check-row"><input type="checkbox" data-api-customer-consent ${m.consent ? "checked" : ""} ${busy}> I agree to service reminders and promotional messages from this salon.</label>${message}<div class="notice notice-info">A fresh verification code is required before the account is created. Your name, PIN and consent are sent only after the code is verified.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft btn-small" data-action="back-to-phone" ${busy}>Back</button><button class="btn btn-primary" data-action="request-registration-otp" ${busy}>Send verification code</button>`);
+      return modalShell("Create your account", "Your mobile number and a password are all you need. No SMS code is sent.", `<div class="form-grid"><div class="form-field"><label for="api-customer-name">Your name</label><input id="api-customer-name" data-api-customer-name autocomplete="name" placeholder="Full name" value="${htmlesc(m.name || "")}" ${busy}></div><div class="form-field"><label for="api-customer-phone">Mobile number</label><input id="api-customer-phone" data-api-customer-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>This number becomes your account name at this salon.</small></div><div class="form-field"><label for="api-customer-password">Password</label><input id="api-customer-password" data-api-customer-password type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="10 to 20 characters" ${busy}><small>${SIGN_IN_PASSWORD_RULE} Never share it with anyone, not even salon staff.</small></div><div class="form-field"><label for="api-customer-password-confirm">Confirm password</label><input id="api-customer-password-confirm" data-api-customer-password-confirm type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="Repeat the password" ${busy}></div><label class="check-row"><input type="checkbox" data-api-customer-consent ${m.consent ? "checked" : ""} ${busy}> I agree to service reminders and promotional messages from this salon.</label>${message}<div class="notice notice-info">One phone keeps one account. A few accounts can be created from the same internet connection.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft btn-small" data-action="back-to-phone" ${busy}>Back</button><button class="btn btn-primary" data-action="submit-registration" ${busy}>Create account</button>`);
     }
-    return modalShell("Sign in or create your profile", "Your mobile number and PIN open your salon profile. New here? Create your profile in a few steps.", `<div class="form-grid"><div class="form-field"><label for="lookup-phone">Pakistani mobile number</label><input id="lookup-phone" data-lookup-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>Use the complete number, for example 0300 123 4567.</small></div>${message}<div class="notice notice-info">Not set a PIN yet? Use the verification code once, then create your PIN from your profile. New customer? Tap Create new account.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="request-otp" ${busy}>Send code instead</button><button class="btn btn-soft" data-action="begin-registration" ${busy}>Create new account</button><button class="btn btn-primary" data-action="submit-api-pin" ${busy}>Sign in with PIN</button>`);
+    return modalShell("Sign in or create your account", "Your mobile number and password open your salon profile. No SMS code is used.", `<div class="form-grid"><div class="form-field"><label for="lookup-phone">Pakistani mobile number</label><input id="lookup-phone" data-lookup-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>Use the complete number, for example 0300 123 4567.</small></div><div class="form-field"><label for="lookup-password">Password</label><input id="lookup-password" data-lookup-password type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="Your password" ${busy}></div>${message}<div class="notice notice-info">New customer? Tap Create new account. Existing customer? Sign in with your number and password.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="begin-registration" ${busy}>Create new account</button><button class="btn btn-primary" data-action="submit-api-pin" ${busy}>Sign in</button>`);
   }
   const matches = m.searched && valid ? (state.customers || []).filter((c) => samePakistaniMobile(c.phone, phone)) : [];
   const match = matches.length === 1 ? matches[0] : null;
@@ -3260,19 +3151,19 @@ function lookupModal() {
     const lockedMinutes = pinLockRemainingMinutes(match.id);
     const message = m.error ? `<div class="notice notice-warning" role="alert">${htmlesc(m.error)}</div>` : "";
     const lockNotice = lockedMinutes
-      ? `<div class="notice notice-warning" role="alert">Too many incorrect PIN attempts. Try again in about ${lockedMinutes} minute${lockedMinutes === 1 ? "" : "s"}.</div>`
+      ? `<div class="notice notice-warning" role="alert">Too many incorrect password attempts. Try again in about ${lockedMinutes} minute${lockedMinutes === 1 ? "" : "s"}.</div>`
       : "";
     const fields = creating
-      ? `<div class="form-field"><label for="lookup-pin">Create a 4 to 6 digit PIN</label><input id="lookup-pin" data-lookup-pin type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${lockedMinutes ? "disabled" : ""}><small>Keep your profile private: the mobile number alone will not open it again.</small></div><div class="form-field"><label for="lookup-pin-confirm">Confirm PIN</label><input id="lookup-pin-confirm" data-lookup-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${lockedMinutes ? "disabled" : ""}></div>`
-      : `<div class="form-field"><label for="lookup-pin">Sign-in PIN</label><input id="lookup-pin" data-lookup-pin type="password" inputmode="numeric" autocomplete="current-password" maxlength="6" placeholder="••••" ${lockedMinutes ? "disabled" : ""}><small>Five wrong attempts pause sign-in for 15 minutes.</small></div>`;
-    return modalShell(creating ? "Create your sign-in PIN" : "Enter your sign-in PIN",
+      ? `<div class="form-field"><label for="lookup-pin">Create a password</label><input id="lookup-pin" data-lookup-pin type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="10 to 20 characters" ${lockedMinutes ? "disabled" : ""}><small>Keep your profile private: the mobile number alone will not open it again. ${SIGN_IN_PASSWORD_RULE}</small></div><div class="form-field"><label for="lookup-pin-confirm">Confirm password</label><input id="lookup-pin-confirm" data-lookup-pin-confirm type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="Repeat the password" ${lockedMinutes ? "disabled" : ""}></div>`
+      : `<div class="form-field"><label for="lookup-pin">Password</label><input id="lookup-pin" data-lookup-pin type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="Your password" ${lockedMinutes ? "disabled" : ""}><small>Five wrong attempts pause sign-in for 15 minutes.</small></div>`;
+    return modalShell(creating ? "Create your sign-in password" : "Enter your sign-in password",
       creating
-        ? `Set a PIN for ${maskPakistaniMobile(match.phone)} so nobody else can open your profile with only your number.`
-        : `Enter the PIN for ${htmlesc(match.name)} · ${maskPakistaniMobile(match.phone)}.`,
-      `<div class="form-grid">${fields}${message}${lockNotice}<div class="notice notice-info">Forgot the PIN? Ask the salon owner to reset it, then set a new one here.</div></div>`,
-      `<button class="btn btn-secondary" data-action="close-modal">Close</button><button class="btn btn-soft" data-action="lookup-restart">Use another number</button><button class="btn btn-primary" data-action="submit-lookup-pin" data-customer-id="${match.id}" ${lockedMinutes ? "disabled" : ""}>${creating ? "Create PIN & continue" : "Continue"}</button>`);
+        ? `Set a password for ${maskPakistaniMobile(match.phone)} so nobody else can open your profile with only your number.`
+        : `Enter the password for ${htmlesc(match.name)} · ${maskPakistaniMobile(match.phone)}.`,
+      `<div class="form-grid">${fields}${message}${lockNotice}<div class="notice notice-info">Forgot the password? Ask the salon owner to reset it, then set a new one here.</div></div>`,
+      `<button class="btn btn-secondary" data-action="close-modal">Close</button><button class="btn btn-soft" data-action="lookup-restart">Use another number</button><button class="btn btn-primary" data-action="submit-lookup-pin" data-customer-id="${match.id}" ${lockedMinutes ? "disabled" : ""}>${creating ? "Create password & continue" : "Continue"}</button>`);
   }
-  const lookupIntro = RELEASE_MODE ? "Enter your complete Pakistani mobile number. We verify an exact match before showing your salon profile." : "Enter your complete Pakistani mobile number. An exact match is used for local QA; production should replace this step with an OTP.";
+  const lookupIntro = RELEASE_MODE ? "Enter your complete Pakistani mobile number. We verify an exact match before showing your salon profile." : "Enter your complete Pakistani mobile number. An exact match is used for local QA; production signs in with the mobile number and password.";
   let result = `<div class="notice notice-info">${lookupIntro}</div>`;
   if (m.searched && !valid) {
     result = `<div class="notice notice-warning">Enter a complete Pakistani mobile number, for example 0300 123 4567.</div>`;
@@ -3294,13 +3185,13 @@ function saveCustomer(id) {
   const editingOwnProfile = modalContext.signup || id === state.currentCustomerId;
   if (!editingOwnProfile && !requireOwnerSession()) return;
   if (!name || !phone || !isValidPakistaniMobile(normalized)) { toast("Enter a complete Pakistani mobile number, for example 0300 123 4567.", "error"); return; }
-  // A customer creating their own profile chooses a sign-in PIN here. The owner
-  // never sets it for someone else, and the PIN is never stored as plain text.
+  // A customer creating their own profile chooses a sign-in password here. The
+  // owner never sets it for someone else, and it is never stored as plain text.
   const newPin = modalContext.signup && !apiModeEnabled() ? String(document.querySelector("[data-customer-pin]")?.value || "").trim() : "";
   const newPinConfirmation = modalContext.signup && !apiModeEnabled() ? String(document.querySelector("[data-customer-pin-confirm]")?.value || "").trim() : "";
   if (modalContext.signup && !apiModeEnabled()) {
-    if (!validSignInPin(newPin)) { toast("Create a 4 to 6 digit PIN for this profile.", "error"); return; }
-    if (newPin !== newPinConfirmation) { toast("Both PIN entries must match.", "error"); return; }
+    if (!validSignInPin(newPin)) { toast(SIGN_IN_PASSWORD_RULE, "error"); return; }
+    if (newPin !== newPinConfirmation) { toast("Both password entries must match.", "error"); return; }
   }
   if ((state.customers || []).some((c) => c.id !== id && samePakistaniMobile(c.phone, normalized))) { toast("That mobile number is already in the customer list.", "error"); return; }
   const displayPhone = formatPakistaniMobile(normalized);

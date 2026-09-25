@@ -44,6 +44,15 @@ ayan:
   auth:
     session-secret: ${AYAN_AUTH_SESSION_SECRET:}
     session-lifetime: ${AYAN_AUTH_SESSION_LIFETIME:PT12H}
+    # The salon server runs behind a free tunnel, so the forwarding header is
+    # what carries the real phone address. Set this to false when the server is
+    # exposed directly and nothing in front of it rewrites the header.
+    trust-forwarded-headers: ${AYAN_AUTH_TRUST_FORWARDED_HEADERS:true}
+    # Mobile number plus password is the only sign in now: one account per
+    # device, and this many accounts per internet connection. Zero = no cap.
+    signup:
+      max-per-network: ${AYAN_SIGNUP_MAX_PER_NETWORK:3}
+      max-per-device: ${AYAN_SIGNUP_MAX_PER_DEVICE:1}
     owner-phone: ${AYAN_AUTH_OWNER_PHONE:}
     owner-salon-id: ${AYAN_AUTH_OWNER_SALON_ID:}
     owner-pin: ${AYAN_AUTH_OWNER_PIN:}
@@ -57,7 +66,14 @@ ayan:
       # code out to the customer because no SMS provider is connected yet.
       inbox-path: ${AYAN_OTP_INBOX_PATH:}
   web:
-    allowed-origins: ${AYAN_WEB_ALLOWED_ORIGINS:http://localhost:4173}
+    # "*" is safe here because this API authenticates with a bearer token and
+    # never with a cookie (allowCredentials=false). Narrowing this list is what
+    # used to break the installed APK: its bundled page is served from
+    # file:///android_asset and therefore sends "Origin: file://", which Spring
+    # rejected with an empty 403 that the app could only show as
+    # "Request Failed (403)". The free tunnel also mints a new hostname on every
+    # restart, so a fixed list could never keep up.
+    allowed-origins: ${AYAN_WEB_ALLOWED_ORIGINS:*}
   rate-limit:
     enabled: ${AYAN_RATE_LIMIT_ENABLED:true}
     general-per-minute: ${AYAN_RATE_LIMIT_GENERAL_PER_MINUTE:120}
