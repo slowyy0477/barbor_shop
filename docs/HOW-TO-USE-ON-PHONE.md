@@ -18,7 +18,7 @@ Open this in any phone browser:
 
 The file is on the shop laptop here:
 
-`E:\Barbar-Shop\Ayan-Beauty-Salon-v1.0.0.apk` (about 214 KB)
+`E:\Barbar-Shop\Salon-App-v1.0.0.apk` (about 216 KB)
 
 Steps on the phone:
 
