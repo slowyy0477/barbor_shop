@@ -176,7 +176,8 @@ IMPORTANT BEFORE SHARING WITH MANY CUSTOMERS
 
 Current APK checksum (SHA-256)
 
-DBD43F0BD989103ECC1A409ADC87A2709DFC4483B726C466AB9A3579FB25FA54
+Salon-App-v1.0.0.apk (219,430 bytes)
+3a0f99247e2d1131dce8963d4de71ef191eef0a7b2b7173e0517ae8fd111c1b5
 
 Do not share the release keystore, signing properties, database password,
 provider token or OTP code in chat.
