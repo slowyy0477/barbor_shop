@@ -1,6 +1,6 @@
 {
-  "salonId": "00000000-0000-0000-0000-000000000001",
-  "apiBaseUrl": "",
-  "updatedAt": null,
-  "publishedBy": "ops/refresh-public-url.ps1"
+    "salonId":  "00000000-0000-0000-0000-000000000001",
+    "apiBaseUrl":  "https://lakes-imagine-that-conducted.trycloudflare.com",
+    "updatedAt":  "2026-09-25T08:29:34Z",
+    "publishedBy":  "ops/publish-salon-address.ps1"
 }
