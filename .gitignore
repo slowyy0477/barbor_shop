@@ -51,3 +51,4 @@ Thumbs.db
 Desktop.ini
 tmp/
 *.log
+ops/render-values.local.txt
