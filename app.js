@@ -2627,6 +2627,15 @@ if (typeof window !== "undefined") {
   window.addEventListener("ayan-api-configured", () => {
     if (apiModeEnabled() && ui.loading && !ui.apiBusy) bootstrapApi();
   });
+  // The bundled phone app also looks up the published salon address by itself.
+  // When that lookup finds a live server after the offline shell has already
+  // painted, reconnect without asking the owner to retype anything.
+  window.addEventListener("ayan-api-discovered", () => {
+    if (ui.apiBusy || !apiModeEnabled()) return;
+    ui.loading = true;
+    render();
+    bootstrapApi();
+  });
 }
 
 if (typeof document !== "undefined") {
