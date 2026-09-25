@@ -33,7 +33,7 @@ if ($health -and $health.StatusCode -eq 200) {
     $pidText = if ($state -and $state.serverPid) { "process $($state.serverPid)" } else { "running" }
     Write-Host "Salon server    : ON  ($pidText, port $port)"
 } else {
-    Write-Host "Salon server    : OFF - double-click start-salon-server.cmd"
+    Write-Host "Salon server    : OFF - double-click '1 START SALON.cmd'"
 }
 
 # 3. Phone address
@@ -61,8 +61,8 @@ Write-Host "----------------------------------------------------"
 if ($health -and $health.StatusCode -eq 200) {
     Write-Host "Everything is ON. Salon phones can work now."
 } else {
-    Write-Host "Next step: double-click start-salon-server.cmd and wait for 'Done'."
+    Write-Host "Next step: double-click '1 START SALON.cmd' and wait for 'DONE'."
 }
-Write-Host "Stop for the day: double-click stop-salon-server.cmd"
+Write-Host "Stop for the day: double-click '2 STOP SALON.cmd'"
 Write-Host "===================================================="
 Write-Host ""
