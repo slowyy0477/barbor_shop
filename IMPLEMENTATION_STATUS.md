@@ -24,11 +24,11 @@ This repository was implemented against the 20-page `Salon-App-Blueprint-by-Roy-
 
 The latest signed sideload APK is:
 
-`E:\Barbar-Shop\android\app\build\outputs\apk\release\app-release.apk`
+`E:\Barbar-Shop\Salon-App-v1.0.0.apk` (identical copy of `E:\Barbar-Shop\android\app\build\outputs\apk\release\app-release.apk`)
 
 SHA-256:
 
-`DBD43F0BD989103ECC1A409ADC87A2709DFC4483B726C466AB9A3579FB25FA54`
+`a3b946393fa22c7fd373eba1a8e078616ced166488ed7b075a924bdf37f584da`
 
 Package: `com.cornerchair.salon`  
 Version: `1.0.0`  

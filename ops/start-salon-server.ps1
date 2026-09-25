@@ -92,7 +92,10 @@ if (-not $settings.PSObject.Properties["OwnerPhone"] -or [string]::IsNullOrWhite
     $changed = $true
 }
 if ($OwnerPin -and $OwnerPin.Trim()) {
-    if ($OwnerPin.Trim() -notmatch "^\d{4,6}$") { throw "The owner PIN must be 4 to 6 digits." }
+    # The owner may use a short 4-6 digit PIN or a longer 10-20 character password.
+    if ($OwnerPin.Trim() -notmatch "^\d{4,6}$" -and $OwnerPin.Trim() -notmatch "^[A-Za-z0-9@#$%^&*!._+-]{10,20}$") {
+        throw "The owner secret must be a 4 to 6 digit PIN or a 10 to 20 character password (letters, digits, @ # $ % ^ & * ! . _ + -)."
+    }
     $settings | Add-Member -NotePropertyName "OwnerPin" -NotePropertyValue $OwnerPin.Trim() -Force
     $changed = $true
 }
@@ -488,16 +491,26 @@ if (-not $java) {
 }
 if (-not $java) { throw "A Java 17+ runtime was not found. Install the JDK, then run this script again." }
 
-$ownerPhone = if ($OwnerPhone -and $OwnerPhone.Trim()) { $OwnerPhone.Trim() }
+# More than one owner mobile number is allowed, separated by a comma, so the
+# owner can keep an older phone working after changing his own number. Every
+# listed number shares the same owner password.
+$ownerPhoneRaw = if ($OwnerPhone -and $OwnerPhone.Trim()) { $OwnerPhone.Trim() }
     elseif ($settings.PSObject.Properties["OwnerPhone"]) { "$($settings.OwnerPhone)".Trim() }
     else { "" }
+$ownerPhoneList = @()
+foreach ($candidate in ($ownerPhoneRaw -split "[,;]")) {
+    $trimmedCandidate = $candidate.Trim()
+    if (-not $trimmedCandidate) { continue }
+    $canonicalCandidate = ConvertTo-CanonicalPhone $trimmedCandidate
+    if (-not $canonicalCandidate) {
+        throw "The owner mobile number '$trimmedCandidate' is not a complete Pakistani mobile number (for example 03001234567)."
+    }
+    if ($ownerPhoneList -notcontains $canonicalCandidate) { $ownerPhoneList += $canonicalCandidate }
+}
+$ownerPhone = $ownerPhoneList -join ","
 
 Write-Step "Starting the salon server on port $Port ..."
-if ($ownerPhone) {
-    $canonicalOwner = ConvertTo-CanonicalPhone $ownerPhone
-    if (-not $canonicalOwner) {
-        throw "The owner mobile number '$ownerPhone' is not a complete Pakistani mobile number (for example 03001234567)."
-    }
+foreach ($canonicalOwner in $ownerPhoneList) {
     $ownerHash = Get-Sha256Hex $canonicalOwner
     $existingOwner = Invoke-Psql "select count(*) from auth_accounts where salon_id = '$SalonId' and role = 'OWNER' and phone_hash = '$ownerHash' and status = 'ACTIVE'" $DbUser $settings.DbPassword $Database
     if ($existingOwner -ne "1") {
@@ -762,7 +775,7 @@ if (-not $NoTunnel) {
 } | ConvertTo-Json | Set-Content -LiteralPath $statePath -Encoding UTF8
 
 Write-Host ""
-Write-Host "Ayan Beauty Salon server is running on this laptop."
+Write-Host "Your salon server is running on this laptop."
 Write-Host "  Salon database : PostgreSQL database '$Database' on 127.0.0.1:5432"
 Write-Host "  Laptop address : http://localhost:$Port"
 if ($lanAddress) { Write-Host "  Same Wi-Fi     : http://${lanAddress}:$Port (browser on this network)" }
@@ -780,14 +793,15 @@ if ($settings.SmsProvider) {
     Write-Host "                   Connect a real SMS provider any time: ops\connect-sms.cmd"
 }
 Write-Host ""
-Write-Host "On each salon phone: open the app, tap the AB mark five times, open Owner > Settings,"
+Write-Host "On each salon phone: open the app, tap the salon mark five times, open Owner > Settings,"
 Write-Host "and paste the phone address above into 'Salon server address', then save."
 if ($ownerPhone) {
-    Write-Host "Owner sign-in on the server: mobile $ownerPhone with PIN $($settings.OwnerPin)"
+    Write-Host "Owner sign-in: mobile $ownerPhone with the owner password or PIN stored on this laptop."
 } else {
-    Write-Host "Owner sign-in on the server: rerun with -OwnerPhone 03xxxxxxxxx to register the owner mobile."
-    Write-Host "The owner PIN stored on this laptop is $($settings.OwnerPin)."
+    Write-Host "Owner sign-in: rerun with -OwnerPhone 03xxxxxxxxx to register the owner mobile."
 }
-Write-Host "Change or reset that PIN by rerunning this script with -OwnerPin 123456 and restarting."
+Write-Host "The owner password or PIN stored on this laptop is: $($settings.OwnerPin)"
+Write-Host "Change it any time: ops\set-owner-password.cmd  (or rerun this script with -OwnerPin ...)."
+Write-Host "Read the newest customer sign-in code: ops\show-last-code.cmd"
 Write-Host "Keep this window's laptop awake while the salon is open. Stop the server with:"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\ops\stop-salon-server.ps1"

@@ -65,7 +65,7 @@ jdbc:postgresql://<host>/<database>?sslmode=require
 
 ## Step 4 - Put the address on the salon phones
 
-Open the app, tap the AB mark 5 times, go to **Owner > Settings**, paste the Render
+Open the app, tap the salon mark 5 times, go to **Owner > Settings**, paste the Render
 address into **Salon server address**, and Save. Do this on every salon phone.
 
 ## Step 5 - Understand the free tier honestly

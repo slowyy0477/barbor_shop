@@ -42,35 +42,60 @@ public class OwnerBootstrap implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         if (phone.isBlank() || salonId.isBlank()) return;
+        UUID salon;
         try {
-            UUID salon = UUID.fromString(salonId);
-            String canonicalPhone = PhoneIdentity.canonicalPakistani(phone);
-            String hash = PhoneIdentity.sha256(canonicalPhone);
-            boolean customerCollision = customers.findBySalonIdAndPhone(salon, canonicalPhone).isPresent()
-                    || customers.findBySalonIdAndPhoneHash(salon, hash)
-                    .filter(value -> value.getStatus() == com.ayan.salon.server.domain.DomainTypes.AccountStatus.ACTIVE)
-                    .isPresent();
-            boolean staffCollision = staff.findBySalonIdAndActiveTrue(salon).stream()
-                    .filter(value -> value.getPhone() != null)
-                    .anyMatch(value -> samePhoneHash(value, hash));
-            if (customerCollision || staffCollision) {
-                throw new IllegalStateException("Owner phone " + canonicalPhone + " already belongs to a customer or barber"
-                        + " of this salon. The owner must use a different number, or that record's number has to change first.");
-            }
-            AuthAccount existing = accounts.findBySalonIdAndPhoneHashAndStatus(
-                    salon, hash, com.ayan.salon.server.domain.DomainTypes.AccountStatus.ACTIVE).orElse(null);
-            if (existing != null && existing.getRole() != ActorRole.OWNER) {
-                throw new IllegalStateException("Configured owner phone belongs to a non-owner salon account");
-            }
-            AuthAccount owner = existing == null
-                    ? accounts.save(new AuthAccount(salon, hash, ActorRole.OWNER, "[]"))
-                    : existing;
-            // The first owner PIN is stored once, as a salted digest. Without an
-            // OTP provider a laptop pilot would otherwise have no way to sign in.
-            if (!pin.isBlank()) auth.ensureActorPin(salon, owner.getId(), pin);
+            salon = UUID.fromString(salonId);
         } catch (IllegalArgumentException invalid) {
-            throw new IllegalStateException("AYAN_AUTH_OWNER_SALON_ID/AYAN_AUTH_OWNER_PHONE is invalid", invalid);
+            throw new IllegalStateException("AYAN_AUTH_OWNER_SALON_ID is not a valid salon id", invalid);
         }
+        // One or more owner mobile numbers may be configured, separated by
+        // commas or spaces. The owner can register a new phone while an older
+        // one keeps working, and every number shares the same owner password.
+        java.util.List<String> configured = java.util.Arrays.stream(phone.split("[,\\s]+"))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .toList();
+        java.util.List<String> skipped = new java.util.ArrayList<>();
+        int registered = 0;
+        for (String candidate : configured) {
+            try {
+                registerOwner(salon, candidate);
+                registered++;
+            } catch (IllegalStateException | IllegalArgumentException problem) {
+                skipped.add(problem.getMessage());
+            }
+        }
+        if (registered == 0 && !skipped.isEmpty()) {
+            throw new IllegalStateException(String.join(" | ", skipped));
+        }
+        for (String warning : skipped) System.err.println("[owner-bootstrap] skipped: " + warning);
+    }
+
+    private void registerOwner(UUID salon, String configuredPhone) {
+        String canonicalPhone = PhoneIdentity.canonicalPakistani(configuredPhone);
+        String hash = PhoneIdentity.sha256(canonicalPhone);
+        boolean customerCollision = customers.findBySalonIdAndPhone(salon, canonicalPhone).isPresent()
+                || customers.findBySalonIdAndPhoneHash(salon, hash)
+                .filter(value -> value.getStatus() == com.ayan.salon.server.domain.DomainTypes.AccountStatus.ACTIVE)
+                .isPresent();
+        boolean staffCollision = staff.findBySalonIdAndActiveTrue(salon).stream()
+                .filter(value -> value.getPhone() != null)
+                .anyMatch(value -> samePhoneHash(value, hash));
+        if (customerCollision || staffCollision) {
+            throw new IllegalStateException("Owner phone " + canonicalPhone + " already belongs to a customer or barber"
+                    + " of this salon. The owner must use a different number, or that record's number has to change first.");
+        }
+        AuthAccount existing = accounts.findBySalonIdAndPhoneHashAndStatus(
+                salon, hash, com.ayan.salon.server.domain.DomainTypes.AccountStatus.ACTIVE).orElse(null);
+        if (existing != null && existing.getRole() != ActorRole.OWNER) {
+            throw new IllegalStateException("Configured owner phone belongs to a non-owner salon account");
+        }
+        AuthAccount owner = existing == null
+                ? accounts.save(new AuthAccount(salon, hash, ActorRole.OWNER, "[]"))
+                : existing;
+        // The first owner PIN is stored once, as a salted digest. Without an
+        // OTP provider a laptop pilot would otherwise have no way to sign in.
+        if (!pin.isBlank()) auth.ensureActorPin(salon, owner.getId(), pin);
     }
 
     private static boolean samePhoneHash(Staff value, String hash) {

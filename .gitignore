@@ -27,6 +27,7 @@ android/release-signing.properties
 # Laptop salon server: local database credentials, runtime state and the
 # downloaded tunnel client stay on this machine only.
 ops/salon-server.local.json
+ops/salon-server.local.json.bak
 ops/salon-server.state.json
 ops/cloudflared.exe
 # Live sign-in codes handed to customers at the counter: never commit or share.

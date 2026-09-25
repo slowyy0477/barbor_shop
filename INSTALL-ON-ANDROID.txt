@@ -1,7 +1,7 @@
-Ayan Beauty Salon - Easy Android Installation
+Salon App - Easy Android Installation
 
 1. On the computer, find:
-   E:\Barbar-Shop\Ayan-Beauty-Salon-v1.0.0.apk
+   E:\Barbar-Shop\Salon-App-v1.0.0.apk
 
 2. Send this APK to your Android phone with a USB cable or a private file
    transfer. Do not upload it to a public website.
@@ -19,9 +19,13 @@ Ayan Beauty Salon - Easy Android Installation
    wrong attempts pause sign-in for 15 minutes.
 
 6. Customers see Home, Book, Wallet and More. They do not see an Owner menu.
-   For this offline single-phone pilot, the owner taps the AB salon mark five
-   times quickly and enters the initial code 530146. Change that code in
-   Owner Settings immediately.
+   The owner taps the salon mark (the round logo at the top of the screen) five
+   times quickly.
+   - With the laptop server running: enter the owner mobile number and the
+     owner password. Ask the person who installed the app for the password, or
+     change it on the laptop with ops\set-owner-password.cmd.
+   - Offline on one phone: enter the initial code 530146 and change it in
+     Owner Settings immediately.
 
 7. Owner > Customers > edit a customer > Reset sign-in PIN clears a forgotten
    PIN. That customer sets a new PIN at the next sign-in.
@@ -44,7 +48,7 @@ Ayan Beauty Salon - Easy Android Installation
     phones.
 
 APK verification:
-- SHA-256: DBD43F0BD989103ECC1A409ADC87A2709DFC4483B726C466AB9A3579FB25FA54
+- SHA-256: a3b946393fa22c7fd373eba1a8e078616ced166488ed7b075a924bdf37f584da
 - Package: com.cornerchair.salon
 - Version: 1.0.0
 

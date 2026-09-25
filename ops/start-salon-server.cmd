@@ -22,7 +22,7 @@ echo   Done. Your salon server is ON.
 echo ============================================================
 echo.
 echo Copy the "Phone address" line printed above into each salon phone:
-echo   open the app - tap the AB mark 5 times - Owner - Settings -
+echo   open the app - tap the salon mark 5 times - Owner - Settings -
 echo   paste it in "Salon server address" - Save.
 echo.
 echo When the salon is closed for the day, run stop-salon-server.cmd
