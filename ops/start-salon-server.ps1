@@ -612,6 +612,7 @@ try {
 } catch { }
 
 $tunnelUrl = ""
+$tunnelPid = $null
 if (-not $NoTunnel) {
     $cloudflared = Join-Path $opsDir "cloudflared.exe"
     if (-not (Test-Path $cloudflared)) {
@@ -627,6 +628,29 @@ if (-not $NoTunnel) {
         # cloudflared prints its banner - including the public address - on
         # stderr, so both streams have to be searched or the address is missed.
         $tunnelErrorLog = Join-Path $logDir "salon-tunnel.err.log"
+        # Cloudflare's free tunnel service occasionally times out while handing out
+        # an address, so a failed attempt is simply tried again instead of telling
+        # the owner that the salon has no internet link.
+        # A quick reachability check first: when the service is throttled from this
+        # connection the backup link is opened instead of waiting minutes.
+        $cloudflareAttemptLimit = 3
+        try {
+            $null = Invoke-WebRequest -UseBasicParsing -Method Head -Uri "https://api.trycloudflare.com" -TimeoutSec 10
+        } catch {
+            $cloudflareStatus = $null
+            try { $cloudflareStatus = $_.Exception.Response.StatusCode.value__ } catch { }
+            if (-not $cloudflareStatus) {
+                $cloudflareAttemptLimit = 0
+                Write-Step "Cloudflare's free tunnel service is slow right now; using the backup phone link."
+            }
+        }
+        $tunnelAttempts = 0
+        while (-not $tunnelUrl -and $tunnelAttempts -lt $cloudflareAttemptLimit) {
+        $tunnelAttempts++
+        if ($tunnelAttempts -gt 1) {
+            Write-Step "The free tunnel did not answer; trying again ($tunnelAttempts of 3) ..."
+            Start-Sleep -Seconds 4
+        }
         Remove-Item -LiteralPath $tunnelLog -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $tunnelErrorLog -ErrorAction SilentlyContinue
         Write-Step "Opening the free https tunnel ..."
@@ -644,14 +668,22 @@ if (-not $NoTunnel) {
             try { $host_ = ([uri]$candidate).Host.ToLowerInvariant() } catch { return $false }
             if ($reservedHosts -contains $host_) { return $false }
             if ($host_ -notlike "*.trycloudflare.com") { return $false }
-            try {
-                $probe = Invoke-WebRequest -UseBasicParsing -Uri "$candidate/actuator/health" -TimeoutSec 6
-                # This Windows PowerShell returns the body as a byte array, so it
-                # has to be decoded before the "UP" marker can be checked.
-                $text = if ($probe.Content -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($probe.Content) } else { [string]$probe.Content }
-                return ($probe.StatusCode -eq 200 -and $text -match "UP")
-            } catch { return $false }
+            # A brand new quick tunnel often needs about twenty seconds before its
+            # first request is answered, so the first probe waits patiently and the
+            # later ones are quick. Without this the laptop can throw away a
+            # perfectly good link and tell the owner that the internet link failed.
+            foreach ($probeTimeout in @(25, 12, 8)) {
+                try {
+                    $probe = Invoke-WebRequest -UseBasicParsing -Uri "$candidate/actuator/health" -TimeoutSec $probeTimeout
+                    # This Windows PowerShell returns the body as a byte array, so it
+                    # has to be decoded before the "UP" marker can be checked.
+                    $text = if ($probe.Content -is [byte[]]) { [System.Text.Encoding]::UTF8.GetString($probe.Content) } else { [string]$probe.Content }
+                    if ($probe.StatusCode -eq 200 -and $text -match "UP") { return $true }
+                } catch { }
+            }
+            return $false
         }
+        $triedCandidates = @{}
         for ($attempt = 0; $attempt -lt 30; $attempt++) {
             Start-Sleep -Seconds 2
             if ($tunnelUrl) { break }
@@ -662,8 +694,17 @@ if (-not $NoTunnel) {
                 foreach ($match in $found) { $candidates += ($match.Matches | ForEach-Object { $_.Value }) }
             }
             foreach ($candidate in ($candidates | Select-Object -Unique)) {
+                if ($triedCandidates.ContainsKey($candidate)) { continue }
                 if (Test-TunnelCandidate $candidate) { $tunnelUrl = $candidate; break }
+                $triedCandidates[$candidate] = $true
             }
+        }
+        # A tunnel that never answered is stopped before the next attempt or before
+        # the owner is told there is no internet link.
+        if (-not $tunnelUrl -and $tunnelProcess) {
+            Stop-Process -Id $tunnelProcess.Id -Force -ErrorAction SilentlyContinue
+            $tunnelProcess = $null
+        }
         }
         if ($tunnelUrl) {
             # Kept on disk so the owner can find the address again after the
@@ -676,6 +717,30 @@ if (-not $NoTunnel) {
                 & powershell -NoProfile -ExecutionPolicy Bypass -File $publishScript -Url $tunnelUrl | Out-Null
             }
         } else {
+            # Stop the unusable tunnel so it cannot linger and confuse the next start.
+            if ($tunnelProcess) {
+                Stop-Process -Id $tunnelProcess.Id -Force -ErrorAction SilentlyContinue
+                $tunnelProcess = $null
+            }
+            # Cloudflare's free tunnel service is sometimes throttled, so the
+            # backup SSH link is opened before the owner is told there is no link.
+            $refreshScript = Join-Path $opsDir "refresh-public-url.ps1"
+            if (Test-Path -LiteralPath $refreshScript) {
+                Write-Step "The Cloudflare link is busy; opening the backup phone link ..."
+                & powershell -NoProfile -ExecutionPolicy Bypass -File $refreshScript | Out-Null
+                $urlFile = Join-Path $opsDir "salon-public-url.txt"
+                if (Test-Path -LiteralPath $urlFile) {
+                    $tunnelUrl = (Get-Content -Raw -LiteralPath $urlFile).Trim()
+                }
+                if ($tunnelUrl -and (Test-Path -LiteralPath $statePath)) {
+                    try {
+                        $backupState = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
+                        if ($backupState.tunnelPid) { $tunnelPid = [int]$backupState.tunnelPid }
+                    } catch { }
+                }
+            }
+        }
+        if (-not $tunnelUrl) {
             # Never leave a stale address on disk: a phone pointed at a dead link
             # looks exactly like a broken salon.
             Remove-Item -LiteralPath (Join-Path $opsDir "salon-public-url.txt") -ErrorAction SilentlyContinue
@@ -689,7 +754,7 @@ if (-not $NoTunnel) {
     startedAt   = (Get-Date).ToString("o")
     port        = $Port
     serverPid   = $serverProcess.Id
-    tunnelPid   = if ($tunnelProcess) { $tunnelProcess.Id } else { $null }
+    tunnelPid   = if ($tunnelProcess) { $tunnelProcess.Id } elseif ($tunnelPid) { $tunnelPid } else { $null }
     keepAwakePid = if ($keepAwakeProcess) { $keepAwakeProcess.Id } else { $null }
     tunnelUrl   = $tunnelUrl
     lanAddress  = $lanAddress

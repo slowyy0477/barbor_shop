@@ -4,8 +4,30 @@ Today the salon works without any SMS bill: the code is written to the laptop an
 the owner reads it out with `ops\show-last-code.ps1`. This page turns that into a
 real message on the customer's phone.
 
+## Status of this salon
+
+- The sending path is built and was proven on this laptop on 25 Sep 2026: an OTP
+  request produced a real HTTP POST to the configured provider with the correct
+  `+92...` number, the provider token and a 5-minute code in the message body.
+- Only the paid provider account is missing. Nothing else has to be coded: the
+  owner runs one command, `ops\connect-sms.cmd`, and answers its questions.
+- On the laptop the provider is a *primary* channel with a safety net: if the
+  provider rejects or times out, the same code is still written to
+  `ops\salon-sign-in-codes.log`, so a customer standing at the counter is never
+  left without a code.
+- Cost, honestly: no provider sends unlimited SMS for free. A Pakistani bulk SMS
+  bundle or Twilio/WhatsApp credit costs a few rupees per message. Free trials
+  work but can only message numbers you verified first.
+
 The server already supports three providers. Only settings change; no code is
 edited and the Android app is **not** rebuilt.
+
+## Easiest way
+
+Double-click `ops\connect-sms.cmd`. It asks which provider you want and for the
+credentials, saves them in the private local file, restarts the salon server and
+sends one test code to the owner's number. The manual paths below are the same
+thing written out, in case you prefer to edit the file yourself.
 
 | Setting `AYAN_SMS_PROVIDER` | What it uses | Cost to start |
 | --- | --- | --- |
@@ -13,6 +35,14 @@ edited and the Android app is **not** rebuilt.
 | `twilio` | Twilio Programmable SMS | free trial credit |
 | `whatsapp` | Meta WhatsApp Cloud API | free service tier |
 | `webhook` | any provider that accepts `{ "to", "message" }` JSON | depends on provider |
+
+## The easy way: `ops\connect-sms.cmd`
+
+Double-click `E:\Barbar-Shop\ops\connect-sms.cmd` on the laptop. It asks which
+provider and for the keys, saves them privately in `ops\salon-server.local.json`
+(never uploaded to GitHub), restarts the salon server and can send one test
+message to a number you choose. Run it with `off` to go back to the free
+on-laptop codes at any time.
 
 ## Option A - Twilio (easiest to test)
 
@@ -83,9 +113,10 @@ AYAN_SMS_WEBHOOK_TOKEN=optional
 ## Safety rules already built in
 
 - The code is never logged and never stored in the outbox payload.
-- A provider failure is a real failure: the customer is told the message could not
-  be sent, and the message stays in `notification_outbox` for an automatic retry
-  with backoff (up to 10 attempts).
+- On the shop laptop a provider failure falls back to the on-machine code file, so
+  a customer at the counter is never stranded; on a hosted server the failure is
+  reported instead and the message stays in `notification_outbox` for an automatic
+  retry with backoff (up to 10 attempts).
 - Numbers are normalised to `+92...` before sending, so `0300 1234567`, `03001234567`
   and `+92 300 1234567` all work.
 - Promotional messages still require the customer's saved consent. Sign-in codes are

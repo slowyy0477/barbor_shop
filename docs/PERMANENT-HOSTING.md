@@ -1,17 +1,33 @@
 # A permanent free online address for the salon
 
-Running the salon on your own laptop is free and private, but the laptop must stay
-on and the free phone link changes every restart. This page puts the same server on
-the internet permanently, still free, so phones can reach it from anywhere.
+There are two free layers, and both are already set up for this salon:
 
-What you need, all free: your GitHub account `slowyy0477`, a Neon account, a Render
-account. Both services let you sign in with GitHub, so there is no new password.
+| Layer | Address | Works when |
+| --- | --- | --- |
+| Permanent app link (GitHub Pages) | <https://slowyy0477.github.io/barbor_shop/> | Always. It opens the salon app on any phone and looks up where the laptop server is right now. |
+| Optional always-on copy (Render + Neon) | `https://<your-service>.onrender.com` | Even when the shop laptop is switched off. Needs the one-time sign-in in Steps 2-3 below. |
 
-## Step 1 - Push the code to GitHub (once)
+The GitHub Pages layer is live and verified: `https://slowyy0477.github.io/barbor_shop/api.json`
+carries the laptop's current tunnel address, and every fresh phone (browser or the
+Android app) reads that file and connects by itself. When the tunnel address changes,
+the laptop republishes it with one small commit - see Step 4.
 
-1. Open `E:\Barbar-Shop\ops` and double-click **push-to-github.cmd**.
-2. Sign in to GitHub in the window that appears.
-3. Wait for **"Done - your code is on GitHub."**
+What the optional always-on copy needs, all free: your GitHub account `slowyy0477`,
+a Neon account, a Render account. Both services let you sign in with GitHub, so
+there is no new password.
+
+## Step 1 - Push the code to GitHub (already done)
+
+The repository `slowyy0477/barbor_shop` is up to date on `main`. To push later
+changes, double-click **`ops\push-to-github.cmd`** and, if GitHub asks, approve the
+sign-in window that appears.
+
+## Step 1b - Republish the laptop address after a restart (laptop mode)
+
+The free tunnel address changes whenever the laptop restarts. The laptop fixes this
+by itself: `ops\start-salon-server.cmd` opens the tunnel and publishes the new
+address to GitHub. If the phones were already using an older address, run
+`ops\refresh-public-url.cmd` once to republish without touching the database.
 
 ## Step 2 - Free PostgreSQL database (Neon)
 
