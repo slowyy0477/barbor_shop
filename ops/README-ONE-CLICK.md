@@ -13,13 +13,23 @@ That is the only setup step, ever.
 
 ## 2. What you get
 
-On your **Desktop** and in the **Start Menu** (folder *Ayan Salon*):
+On your **Desktop** and in the **Start Menu** (folder *Salon Server*):
 
 | Shortcut | What it does |
 | --- | --- |
-| **Start Salon Server** | Turns on the database + server + phone link. Use it if the server is off. |
-| **Check Salon Server** | Shows in one screen: database on/off, server on/off, the phone address. |
-| **Stop Salon Server** | Turns the server off at the end of the day. |
+| **1 START Salon** | Turns on the database + server + free phone link, then publishes the link. |
+| **2 STOP Salon** | Turns the server and the phone link off at the end of the day. |
+| **3 CHECK Salon** | Shows in one screen: database on/off, server on/off, the phone address. |
+
+The same three files also sit in the main folder, so they are easy to find:
+
+    E:\Barbar-Shop\1 START SALON.cmd
+    E:\Barbar-Shop\2 STOP SALON.cmd
+    E:\Barbar-Shop\3 CHECK SALON.cmd
+
+Double-clicking **1 START Salon** when the server is already on changes
+nothing: it says "ALREADY ON" and finishes. Type **R** only when you really want
+to restart it (that also gives the phones a new address).
 
 And from now on the server also starts **by itself** every time you sign in to Windows, so most days you do nothing at all.
 
@@ -47,10 +57,10 @@ press **Save & reconnect** once.
 ## 3. Daily routine
 
 1. Turn the laptop on and sign in to Windows.
-2. The salon server starts by itself (a black window appears for a few seconds).
-3. On each salon phone the app already has the salon address saved. If the phones say the server is not reachable, open **Check Salon Server** and copy the new **Phone address** into the phone (see step 4).
-4. To put the address on a phone: open the app, tap the **AB** mark 5 times, go to **Owner > Settings**, paste it in **Salon server address**, tap **Save**.
-5. At closing time: double-click **Stop Salon Server**, or just shut the laptop down.
+2. The salon server starts by itself (a black window appears for a few seconds, then closes on its own).
+3. On each salon phone the app already has the salon address saved. If the phones say the server is not reachable, open **3 CHECK Salon** and copy the new **Phone address** into the phone (see step 4).
+4. To put the address on a phone: open the app, tap the round salon mark 5 times, go to **Owner > Settings**, paste it in **Salon server address**, tap **Save**.
+5. At closing time: double-click **2 STOP Salon**, or just shut the laptop down.
 
 ## 4. The phone address changes
 
@@ -58,9 +68,9 @@ The free phone link (`https://something.trycloudflare.com`) is new every time th
 
 Where to find the current one:
 
-- the black **Start Salon Server** window, on the line **Phone address**, or
+- the black **1 START Salon** window, on the line **Phone address**, or
 - the file `E:\Barbar-Shop\ops\salon-public-url.txt`, or
-- the **Check Salon Server** shortcut.
+- the **3 CHECK Salon** shortcut.
 
 If the salon is always on the same Wi-Fi, you can also use the **Same Wi-Fi** address, which never changes.
 
@@ -68,10 +78,10 @@ If the salon is always on the same Wi-Fi, you can also use the **Same Wi-Fi** ad
 
 | What you see | What to do |
 | --- | --- |
-| "The salon server is already running" | Good - nothing else needed. |
-| Check shows **Salon server : OFF** | Double-click **Start Salon Server** and wait for "Done". |
-| Check shows **Database : OFF** | Double-click **Start Salon Server** - it turns the database on too. |
-| Phone cannot reach the salon | Run **Check Salon Server**, copy the new **Phone address** into the phone again. |
+| "ALREADY ON" | Good - nothing else needed. |
+| Check shows **Salon server : OFF** | Double-click **1 START Salon** and wait for "DONE". |
+| Check shows **Database : OFF** | Double-click **1 START Salon** - it turns the database on too. |
+| Phone cannot reach the salon | Run **3 CHECK Salon**, copy the new **Phone address** into the phone again. |
 | The laptop sleeps and phones stop working | Keep the laptop plugged in. The one-click setup already stops it sleeping on mains power. |
 
 ## 5b. Real sign-in codes by SMS or WhatsApp
@@ -115,5 +125,7 @@ powershell -ExecutionPolicy Bypass -File E:\Barbar-Shop\ops\install-one-click-st
 ## 7. Privacy and safety
 
 - `ops\salon-server.local.json` holds the database password and the owner PIN. Never send it to anyone.
+- Owner password helpers: `ops\show-owner-password.cmd` shows it, `ops\set-owner-password.cmd` changes it.
+- Customer sign-in code helper: `ops\show-last-code.cmd` prints the newest code.
 - Important files to keep private: `ops\salon-server.local.json`, `ops\power-settings-backup.json`, `android\release-signing.properties`.
 - A backup of the database can be made any time with `ops\backup-postgres.ps1`.
