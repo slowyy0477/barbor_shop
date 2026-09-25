@@ -13,7 +13,9 @@ This repository was implemented against the 20-page `Salon-App-Blueprint-by-Roy-
 - One-click laptop hosting: `ops/install-one-click-start.ps1` puts Start/Check/Stop shortcuts on the Desktop and in the Start Menu and registers `Ayan Salon Server` to start at every Windows sign-in (falling back to a Startup-folder shortcut when the scheduled task is refused). `start-salon-server.ps1` refuses to start a second copy and reports the running salon instead, and a hidden keep-awake agent holds a plain Windows "system required" request while the server runs, so the laptop stops sleeping mid-shift without needing administrator-only power settings. A tunnel address is only published after it genuinely answers `/actuator/health`, so an error line can never become the salon link, and `ops/refresh-public-url.ps1` re-opens the free link on demand.
 - Fresh installs carry no salon identity: migration V14 clears only the untouched seed name/address and the seeded payment account titles, and a release install starts with a blank salon profile, so a customer never sees a salon name, address or receiving account the owner did not type himself. The owner sets them in Owner > Settings.
 - No salon identity is compiled into the installed shell: the launcher label stays the neutral `Salon` until the owner uses Owner > Settings > "Phone app name & logo". That saves the name and logo on the phone, shows them on the launch screen from the next start, and offers a home-screen icon carrying the same name and logo, because Android cannot rename an app that is already installed. The same screen holds the salon server address, and when that address stops answering the shell falls back to the bundled offline copy with a plain notice instead of a browser error page.
-- Sign-in codes without an SMS bill: on the laptop path the server runs the `local` profile, so each verification code is written to `ops\salon-sign-in-codes.log` (and the server log) instead of being texted. The owner runs `ops\show-last-code.ps1` and reads the newest code to the customer at the counter. The code is single use and expires in about five minutes. This channel exists only because no SMS provider is connected yet and is removed by dropping the `local` profile once one is.
+- Sign-in codes without an SMS bill: on the laptop path the server runs the `local` profile, so each verification code is written to `ops\salon-sign-in-codes.log` (and the server log) instead of being texted. The owner runs `ops\show-last-code.ps1` and reads the newest code to the customer at the counter. The code is single use and expires in about five minutes.
+- Real sign-in codes: `SmsDeliveryClient` sends the same code as a real message through Twilio, the WhatsApp Cloud API or any gateway webhook (`AYAN_SMS_PROVIDER`). `ops\connect-sms.ps1` (double-click `ops\connect-sms.cmd`) asks for the credentials, stores them only in the ignored `ops\salon-server.local.json`, restarts the server and sends one test code. On the laptop profile a provider failure falls back to the on-machine code file, so a customer at the counter is never stranded; on a hosted server the failure stays visible and the outbox keeps the notification for a retry.
+- Permanent public link: the repository is published with GitHub Pages at <https://slowyy0477.github.io/barbor_shop/>. `api.json` carries the current salon address, the laptop republishes it through `ops\publish-salon-address.ps1` every time the free tunnel opens or is refreshed, and the page (and the installed phone app) read it automatically. The page is same-origin aware: when the salon server itself serves it, no lookup is needed.
 - Owner dashboard, walk-in bookings, status changes, completion automation, customer/service/staff management, payment methods, settings, reports, exports, audit history and reversal/reason workflows.
 - Release-mode startup with no customer, booking, visit, deposit, withdrawal, referral or wallet transaction records. The bundled catalog contains the initial Ayan salon configuration and is editable by the owner.
 - Spring Boot/PostgreSQL server boundary with integer PKR minor units, append-only financial ledger, manual provider verification, wallet reservations, idempotent mutation keys, tenant checks, actor permissions, referral checks and audit records.
@@ -26,7 +28,7 @@ The latest signed sideload APK is:
 
 SHA-256:
 
-`0807921B79C41296436C979536280C093A49179BEE21361991826488AAE1A9A2`
+`DBD43F0BD989103ECC1A409ADC87A2709DFC4483B726C466AB9A3579FB25FA54`
 
 Package: `com.cornerchair.salon`  
 Version: `1.0.0`  
@@ -56,7 +58,9 @@ The server is the required source of truth for real funds. It rejects forged add
 
 - JavaScript syntax checks for root and Android assets.
 - Java domain, financial hardening and Android navigation self-tests.
-- Spring test suite: 69 tests, 0 failures, 0 errors, including PIN registration/sign-in, PIN lockout, current-PIN change checks, media validation, auth/catalog hardening and database idempotency tests.
+- Spring test suite: 78 tests, 0 failures, 0 errors, including PIN registration/sign-in, PIN lockout, current-PIN change checks, media validation, auth/catalog hardening, database idempotency tests and the SMS provider request tests (`SmsDeliveryClientTest`).
+- Public-link checks (`tmp/verify-public-link.js`): 7 checks, proving the page resolves the salon server when it is served by the server itself, when it is served from GitHub Pages with a published address, when the host publishes nothing, inside the offline phone bundle, and when a phone was deliberately set to offline mode.
+- Live checks against the running system: the tunnel and the GitHub Pages link both answered `200`, the API returned `Access-Control-Allow-Origin` for the Pages origin and for the phone bundle origin, and the published `api.json` matched the live tunnel address.
 - APK build, v2 signature verification, zip alignment and manifest inspection.
 - Installed-shell checks on the rebuilt release APK: launcher label reads `Salon`, the bundled `assets/app.js` carries the phone branding panel, and the release APK still contains no salon name in its launcher or splash resources.
 - Headless browser check of the phone branding panel (`tmp/verify-phone-branding.js`): 14 checks, including the owner-only panel, the name sent to the native bridge, the icon sent as a data URL, a refused blank name and the panel staying hidden in a plain browser.
@@ -68,9 +72,9 @@ The server is the required source of truth for real funds. It rejects forged add
 
 The application code and local release build are complete. The remaining work is environment setup that cannot be performed without owner-controlled accounts and secrets:
 
-1. Deploy PostgreSQL and the Spring server behind TLS, then place database/API/OTP/notification secrets in the host secret store. `docker-compose.yml`, `Caddyfile`, backup scripts and rate limits are included.
-2. Configure a real SMS OTP provider URL/token and the owner bootstrap phone. The server already issues revocable database-backed opaque sessions and checks roles/permissions; no provider credential is bundled.
-3. Build the Android release with the deployed HTTPS API origin (`-ApiBaseUrl=https://...`) and set the salon UUID. The current APK is the safe offline release because no public API origin exists yet.
+1. Optional: deploy PostgreSQL and the Spring server behind TLS for a host that runs without the laptop (`docs/PERMANENT-HOSTING.md`, `Dockerfile`, `render.yaml`). The laptop path already runs with TLS through the free tunnel.
+2. Create the SMS provider account and run `ops\connect-sms.cmd`. The code path, adapters and tests are complete; only owner-controlled credentials are missing, and the on-machine code file covers the counter until then.
+3. Optional: build the Android release with a baked HTTPS API origin (`-ApiBaseUrl=https://...`). The current APK publishes its address lookup instead, so a fresh install finds the salon server without any typing.
 4. Configure an SMS/push delivery endpoint for the durable notification outbox. The outbox, retry dispatcher and provider boundary are implemented.
 5. Connect official Pakistani payment-provider merchant APIs only after merchant credentials and webhook verification are available. Manual owner-approved deposits remain the safe default.
 6. Run live PostgreSQL migration/concurrency tests using the owner’s database credentials. H2 and service-level concurrency/idempotency tests pass locally; this workstation has PostgreSQL running but no authorized database password was supplied.
@@ -87,4 +91,4 @@ powershell -ExecutionPolicy Bypass -File .\android\build-apk.ps1 -Variant Releas
 
 Copy the resulting APK to the phone, enable installation from the file manager when Android asks, and install it. If an older debug APK with the same package is already installed, uninstall that debug build first because it has a different signing key. Keep `android\keys\ayan-salon-release.jks` and `android\release-signing.properties` private and backed up.
 
-There is no GitHub remote configured yet. A repository URL and GitHub authentication are required before pushing or publishing CI artifacts.
+The repository is pushed to <https://github.com/slowyy0477/barbor_shop> (`main`) and published at <https://slowyy0477.github.io/barbor_shop/>. The stored GitHub credential on this laptop lets the laptop publish a new salon address after every restart without asking for a password. `ops\push-to-github.cmd` remains for a fresh machine.

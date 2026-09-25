@@ -2627,6 +2627,15 @@ if (typeof window !== "undefined") {
   window.addEventListener("ayan-api-configured", () => {
     if (apiModeEnabled() && ui.loading && !ui.apiBusy) bootstrapApi();
   });
+  // The bundled phone app also looks up the published salon address by itself.
+  // When that lookup finds a live server after the offline shell has already
+  // painted, reconnect without asking the owner to retype anything.
+  window.addEventListener("ayan-api-discovered", () => {
+    if (ui.apiBusy || !apiModeEnabled()) return;
+    ui.loading = true;
+    render();
+    bootstrapApi();
+  });
 }
 
 if (typeof document !== "undefined") {
@@ -3040,12 +3049,17 @@ function saveServerAddress() {
   let accepted = false;
   try { accepted = window.AyanSalonNative?.setServerUrl?.(value) === true; } catch (_) { accepted = false; }
   if (!accepted) { toast("That address was not accepted. Use a bare https:// address without a path.", "error"); return; }
+  // A deliberate choice beats the published address the app finds by itself.
+  try { localStorage.removeItem("ayan-api-opt-out"); } catch (_) { /* private storage */ }
   toast("Server address saved. Reconnecting this phone.");
 }
 
 function clearServerAddress() {
   let cleared = false;
   try { cleared = window.AyanSalonNative?.clearServerUrl?.() !== false; } catch (_) { cleared = false; }
+  // Remember that this phone really wants to stay offline, otherwise the
+  // automatic lookup would reconnect it on the next start.
+  if (cleared) { try { localStorage.setItem("ayan-api-opt-out", "1"); } catch (_) { /* private storage */ } }
   toast(cleared ? "Offline mode restored on this phone." : "The address could not be cleared.", cleared ? "success" : "error");
 }
 
