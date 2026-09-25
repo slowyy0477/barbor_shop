@@ -28,12 +28,13 @@ function Test-TunnelCandidate([string]$candidate) {
     $hostName = ""
     try { $hostName = ([uri]$candidate).Host.ToLowerInvariant() } catch { return $false }
     if ($reservedHosts -contains $hostName) { return $false }
-    # Cloudflare is the first choice; serveo.net and localhost.run are free
-    # backups that also work on networks which block their SSH port 22.
+    # Cloudflare is the first choice; serveo.net, localhost.run and Tunnelmole
+    # are free backups that also work on networks which block SSH port 22.
     if ($hostName -notlike "*.trycloudflare.com" -and
         $hostName -notlike "*.serveousercontent.com" -and
         $hostName -notlike "*.serveo.net" -and
-        $hostName -notlike "*.lhr.life") { return $false }
+        $hostName -notlike "*.lhr.life" -and
+        $hostName -notlike "*.tunnelmole.net") { return $false }
     # A brand new quick tunnel can need about twenty seconds before its first
     # request is answered, so the first probe waits patiently and later ones are
     # quick. Without this a good link can be thrown away as "not available".
@@ -109,6 +110,10 @@ while (-not $tunnelUrl -and $tunnelAttempts -lt $cloudflareAttemptLimit) {
     for ($attempt = 0; $attempt -lt 30; $attempt++) {
         Start-Sleep -Seconds 2
         if ($tunnelUrl) { break }
+        # When Cloudflare's service refuses the request, the program stops on its
+        # own within a few seconds. There is no point in waiting the whole minute
+        # for an address that is never coming: the backups are tried instead.
+        if ($attempt -ge 2 -and -not (Get-Process -Id $tunnelProcess.Id -ErrorAction SilentlyContinue)) { break }
         $candidates = @()
         foreach ($logFile in @($tunnelLog, $tunnelErrorLog)) {
             if (-not (Test-Path $logFile)) { continue }
@@ -158,6 +163,42 @@ if (-not $tunnelUrl) {
         }
         if (-not $tunnelUrl -and $tunnelProcess) {
             Stop-Process -Id $tunnelProcess.Id -Force -ErrorAction SilentlyContinue
+            $tunnelProcess = $null
+        }
+    }
+}
+
+# 4. Cloudflare and the SSH backup are both unavailable, so the last free
+#    backup is opened: Tunnelmole, which travels over ordinary HTTPS on port
+#    443 and needs no account. Node.js is installed on this laptop with the
+#    salon files, so npx is always there.
+if (-not $tunnelUrl) {
+    $npx = Join-Path ${env:ProgramFiles} "nodejs\npx.cmd"
+    if (-not (Test-Path -LiteralPath $npx)) {
+        $npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Source)
+    }
+    if ($npx) {
+        Write-Host "The Cloudflare link and the SSH backup did not answer; opening the last backup phone link ..."
+        Remove-Item -LiteralPath $tunnelLog, $tunnelErrorLog -ErrorAction SilentlyContinue
+        $tunnelProcess = Start-Process -FilePath $npx `
+            -ArgumentList @("-y", "tunnelmole", "$port") `
+            -RedirectStandardOutput $tunnelLog -RedirectStandardError $tunnelErrorLog -WindowStyle Hidden -PassThru
+        for ($attempt = 0; $attempt -lt 25 -and -not $tunnelUrl; $attempt++) {
+            Start-Sleep -Seconds 2
+            $candidates = @()
+            foreach ($logFile in @($tunnelLog, $tunnelErrorLog)) {
+                if (-not (Test-Path $logFile)) { continue }
+                $found = Select-String -Path $logFile -Pattern "https://[a-z0-9][a-z0-9-]+\.tunnelmole\.net" -AllMatches -ErrorAction SilentlyContinue
+                foreach ($match in $found) { $candidates += ($match.Matches | ForEach-Object { $_.Value }) }
+            }
+            foreach ($candidate in ($candidates | Select-Object -Unique)) {
+                if (Test-TunnelCandidate $candidate) { $tunnelUrl = $candidate; break }
+            }
+        }
+        if (-not $tunnelUrl -and $tunnelProcess) {
+            # npx starts the tunnel inside a child process, so the whole little
+            # process tree has to be closed when the link never answered.
+            & taskkill /PID $tunnelProcess.Id /T /F 2>&1 | Out-Null
             $tunnelProcess = $null
         }
     }

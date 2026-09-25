@@ -131,10 +131,15 @@ Notes about the free tunnel
   apps follow it, so in normal use there is nothing to copy by hand.
 - The customers' permanent link is https://slowyy0477.github.io/barbor_shop/ .
   It is free and it does not change.
-- If the free internet link is unavailable (it depends on Cloudflare, not on
-  your laptop), phones on the same Wi-Fi can use the "Same Wi-Fi" address that
-  Check Salon Server prints. Double-click ops\refresh-public-url.cmd to try the
-  free internet link again.
+- Cloudflare is the usual free link, but it is not the only one. If it is busy
+  the laptop opens a backup free link by itself (serveo over SSH, then
+  Tunnelmole over HTTPS). Nothing has to be typed or chosen.
+- While the salon is open the laptop checks the link every couple of minutes.
+  If it stops answering, a fresh link is opened and published automatically,
+  and the phones follow it on their own.
+- If no internet link is available at all, phones on the same Wi-Fi can use the
+  "Same Wi-Fi" address that Check Salon Server prints. Double-click
+  ops\refresh-public-url.cmd to try the free internet link again.
 - Keep the laptop awake and online while the salon is open.
 - Only share the phone address with the salon. Never share the file
   ops\salon-server.local.json.
