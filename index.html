@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1E1E20" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ayan Salon" />
+    <meta name="description" content="Ayan Beauty Salon booking, wallet, reminders and owner dashboard app for PKR." />
+    <meta name="api-base-url" content="" />
+    <meta name="salon-id" content="00000000-0000-0000-0000-000000000001" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon.svg" />
+    <title>Ayan Beauty Salon | Salon OS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=ayan12" />
+  </head>
+  <body>
+    <div id="app" aria-live="polite"></div>
+    <div id="toast-region" class="toast-region" aria-live="assertive"></div>
+    <script>
+      (() => {
+        const localQa = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname || "")
+          && /(?:^|[?&])mode=qa(?:&|$)/i.test(location.search || "");
+        if (localQa) document.write('<script src="qa-seed.js?v=ayan1"><' + '/script>');
+      })();
+    </script>
+    <script src="api-client.js?v=ayan4"></script>
+    <script src="app.js?v=ayan13"></script>
+    <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => {});</script>
+  </body>
+</html>

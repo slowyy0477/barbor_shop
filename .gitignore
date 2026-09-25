@@ -1,0 +1,45 @@
+# Local browser/runtime state
+tmp/
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Android/Gradle outputs and local SDK metadata
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+.android-sdk/
+.gradle-user/
+.gradle/
+.m2/
+*.keystore
+*.jks
+android/keys/
+android/release-signing.properties
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Laptop salon server: local database credentials, runtime state and the
+# downloaded tunnel client stay on this machine only.
+ops/salon-server.local.json
+ops/salon-server.state.json
+ops/cloudflared.exe
+# Live sign-in codes handed to customers at the counter: never commit or share.
+ops/salon-sign-in-codes.log
+# The free tunnel address changes on every restart, so it is local state only.
+ops/salon-public-url.txt
+
+# The salon web app is copied into the server at startup by
+# ops/sync-server-web.ps1 so the same https address serves the phone UI.
+server/src/main/resources/static/
+
+# OS files
+Thumbs.db
+Desktop.ini
+tmp/
+*.log

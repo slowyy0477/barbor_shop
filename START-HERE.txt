@@ -1,0 +1,140 @@
+Ayan Beauty Salon - Start Here
+
+WHAT YOU HAVE
+
+Two ways to use the same app:
+
+1. One phone only (works today, no internet needed)
+   The APK keeps its own customers, bookings and wallet on that one phone.
+
+2. Laptop as the salon server (free, shared between phones)
+   The shop laptop runs the salon database and server. Every phone that opens
+   the app sees the same customers, bookings and wallet. No monthly host is
+   needed; the laptop is the server.
+
+
+PART 1 - USE THE APK ON ONE PHONE TODAY
+
+1. On the computer open:
+   E:\Barbar-Shop\Ayan-Beauty-Salon-v1.0.0.apk
+2. Send that file privately to the Android phone with a USB cable or private
+   cloud storage.
+3. On the phone open Files, tap the APK, allow Files to install unknown apps,
+   then tap Install and Open.
+4. A fresh install is empty. There are no demo customers or demo money records.
+   The installed name starts as the neutral "Salon".
+5. Owner > Settings > "Phone app name & logo" saves your salon name and logo on
+   that phone. The launch screen shows them from the next start, and Android
+   offers a home-screen icon with the same name and logo. Android cannot rename
+   an app that is already installed, so keep that icon on staff phones.
+
+Customer sign-in on the phone
+
+- A customer enters a complete Pakistani mobile number
+  (03xx xxx xxxx, 3xxxxxxxxx, +92xxxxxxxxxx or 0092xxxxxxxxxx).
+- The app then asks for the customer's own 4 to 6 digit PIN. The mobile number
+  alone never opens a profile.
+- New customers create that PIN while making their profile.
+- Five wrong PIN attempts pause sign-in for 15 minutes.
+- Forgot the PIN? The owner opens Owner > Customers, edits that customer and
+  taps Reset sign-in PIN. The customer sets a new PIN at the next sign-in.
+
+Owner sign-in on the phone (offline mode)
+
+1. Tap the AB salon mark five times quickly.
+2. Enter the initial owner code: 530146
+3. Open Owner > Settings and change the code immediately.
+4. Lock the owner workspace when finished.
+
+Haircut photos
+
+- The owner adds photos in Owner > Services & staff > Add haircut style.
+- In that same form the owner can link the style to one of his services
+  ("Bookable service"). Customers then get a real "Book this look" button that
+  opens the booking screen with that service already chosen.
+- Every style row has Edit, Hide/Show and Remove. Remove takes the style off the
+  customer home screen and keeps the record, so nothing financial is deleted.
+- Customers see those photos in the Haircut styles strip on Home. The cards
+  slide in one after another as the strip appears, the photos move gently, and
+  tapping a photo opens the full look with a Book this look button.
+- A style without a booking link still shows its photo and price, and the
+  customer gets a "Choose a service" button instead.
+- Phones that ask for reduced motion show the photos without animation.
+
+PART 2 - MAKE THE LAPTOP THE SALON SERVER (FREE)
+
+Easiest way - let the laptop do it by itself
+
+1. Open E:\Barbar-Shop\ops and right-click install-one-click-start.ps1,
+   then choose "Run with PowerShell" and click Yes if Windows asks.
+2. That is the only setup step. From then on the salon server starts by
+   itself whenever you sign in to Windows, and the laptop stops going to
+   sleep while it is serving.
+3. On the Desktop you now have three shortcuts:
+     Start Salon Server   - turn everything on by hand any time
+     Check Salon Server   - one screen: database, server, phone address
+     Stop Salon Server    - turn it off at the end of the day
+4. Beginners: double-click "Check Salon Server" whenever you are unsure.
+   Full guide: ops\README-ONE-CLICK.md
+
+Manual way (if you prefer typing)
+
+One-time setup on the shop laptop:
+
+1. Open PowerShell in E:\Barbar-Shop and run:
+   powershell -ExecutionPolicy Bypass -File .\ops\start-salon-server.ps1 -OwnerPhone 03xxxxxxxxx
+   (Replace 03xxxxxxxxx with the owner's own mobile number.)
+2. The script prepares the PostgreSQL database, builds the server, starts it,
+   and opens a free https tunnel. It prints:
+     - Owner sign-in: the mobile number and the PIN it generated
+     - Phone address: an https://...trycloudflare.com link
+3. On every salon phone that should share data:
+   - Install the APK and open it.
+   - Tap the AB mark five times, open Owner > Settings.
+   - Paste the printed https link into "Salon server address" and save.
+   - The phone reconnects. Customers now sign in with mobile + PIN on the
+     shared server.
+4. Stop the server for the day with:
+   powershell -ExecutionPolicy Bypass -File .\ops\stop-salon-server.ps1
+
+When a customer signs up for the first time
+
+- There is no SMS provider yet, so the six-digit code is not texted.
+- The code is written on the laptop instead. In a second PowerShell window run:
+    powershell -ExecutionPolicy Bypass -File .\ops\show-last-code.ps1
+- Read that code to the customer. It works once and expires in a few minutes.
+- The customer then chooses their own 4 to 6 digit PIN and uses mobile + PIN
+  every time after that. Codes are only needed again if a PIN is forgotten.
+- After a PIN is forgotten, the owner taps Reset sign-in PIN in Owner >
+  Customers, and the customer asks for one new code to set a fresh PIN.
+
+Notes about the free tunnel
+
+- The free address changes each time you restart the server. Paste the new
+  link into each phone's "Salon server address" setting again, or keep the
+  laptop running.
+- If the free internet link is unavailable (it depends on Cloudflare, not on
+  your laptop), phones on the same Wi-Fi can use the "Same Wi-Fi" address that
+  Check Salon Server prints. Double-click ops\refresh-public-url.cmd to try the
+  free internet link again.
+- Keep the laptop awake and online while the salon is open.
+- Only share the phone address with the salon. Never share the file
+  ops\salon-server.local.json.
+
+
+IMPORTANT BEFORE SHARING WITH MANY CUSTOMERS
+
+- The single-phone APK stores each phone's data separately. Shared balances and
+  bookings need Part 2 (the laptop server).
+- Real SMS one-time codes, card payments and payouts still need owner accounts
+  with a provider. The laptop server uses mobile + PIN instead of SMS, and
+  manual owner-approved deposits.
+- Free services have limits. A laptop server is free but only runs while the
+  laptop is on.
+
+Current APK checksum (SHA-256)
+
+0807921B79C41296436C979536280C093A49179BEE21361991826488AAE1A9A2
+
+Do not share the release keystore, signing properties, database password,
+provider token or OTP code in chat.

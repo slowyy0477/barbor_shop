@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Deliberately neutral: no salon name is baked into the installed app.
+         The owner's own name and logo are applied from Owner Settings and shown
+         on the launch screen and on the pinned home-screen icon. -->
+    <string name="app_name">Salon</string>
+    <string name="app_subtitle">Salon OS · PKR</string>
+    <string name="splash_default_title">Salon</string>
+</resources>

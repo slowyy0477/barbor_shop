@@ -1,0 +1,53 @@
+Ayan Beauty Salon - Easy Android Installation
+
+1. On the computer, find:
+   E:\Barbar-Shop\Ayan-Beauty-Salon-v1.0.0.apk
+
+2. Send this APK to your Android phone with a USB cable or a private file
+   transfer. Do not upload it to a public website.
+
+3. On the phone, open Files, tap the APK, allow Files to install unknown
+   apps when Android asks, then tap Install.
+
+4. Open the app. A fresh install has no demo customers or demo money records.
+   The installed name is the neutral "Salon" until step 10 is done.
+
+5. Customers sign in with their Pakistani mobile number and their own 4 to 6
+   digit PIN. A new customer creates the PIN while making the profile. Five
+   wrong attempts pause sign-in for 15 minutes.
+
+6. Customers see Home, Book, Wallet and More. They do not see an Owner menu.
+   For this offline single-phone pilot, the owner taps the AB salon mark five
+   times quickly and enters the initial code 530146. Change that code in
+   Owner Settings immediately.
+
+7. Owner > Customers > edit a customer > Reset sign-in PIN clears a forgotten
+   PIN. That customer sets a new PIN at the next sign-in.
+
+8. Haircut photos: the owner uploads photos under Owner > Services & staff >
+   Add haircut style. Customers see them animate in the Haircut styles strip
+   and can tap a photo to open the full look.
+
+9. To share one set of customers, bookings and wallet between several phones,
+   run the laptop server and paste its https address into Owner > Settings >
+   Salon server address. See START-HERE.txt, Part 2.
+
+10. Owner > Settings > "Phone app name & logo" saves your salon name and logo
+    on this phone. The launch screen shows them from the next start, and
+    Android offers a home-screen icon with the same name and logo. Android
+    cannot rename an app once it is installed, so keep that icon on staff
+    phones.
+
+APK verification:
+- SHA-256: 0807921B79C41296436C979536280C093A49179BEE21361991826488AAE1A9A2
+- Package: com.cornerchair.salon
+- Version: 1.0.0
+
+Important:
+- Without the laptop server, this APK is an offline single-device pilot. Its
+  data is not shared between phones and it is not the source of truth for real
+  money.
+- The shared version keeps customer, booking and wallet data on the laptop
+  server. Real SMS codes, card payments and payouts still need provider
+  accounts later.
+- Keep the release signing key private. It is required for future updates.

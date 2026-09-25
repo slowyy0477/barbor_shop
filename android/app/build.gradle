@@ -1,0 +1,94 @@
+apply plugin: 'com.android.application'
+
+// Keep one canonical property name across Gradle, the PowerShell helper and CI.
+// The endpoint is public configuration; credentials never belong in BuildConfig.
+def configuredSalonId = (project.findProperty('salonId') ?: System.getenv('AYAN_SALON_ID') ?: '00000000-0000-0000-0000-000000000001').toString().trim()
+def gradleString = { value -> '"' + value.toString().replace('\\', '\\\\').replace('"', '\\"') + '"' }
+
+import java.net.URI
+
+// API_BASE_URL is an endpoint only, never a credential. It may be supplied with
+// -PAPI_BASE_URL=https://api.example.com or AYAN_API_BASE_URL in the build env.
+// Release builds accept HTTPS origins; local HTTP is limited to loopback/emulator
+// hosts for development. Query strings, fragments and embedded user info are
+// rejected so secrets cannot accidentally be baked into BuildConfig.
+def rawApiBaseUrl = (project.findProperty('API_BASE_URL') ?: project.findProperty('apiBaseUrl') ?: System.getenv('AYAN_API_BASE_URL') ?: '').toString().trim()
+if (rawApiBaseUrl.length() > 512) {
+    throw new GradleException('API_BASE_URL is too long; provide an origin/path of at most 512 characters')
+}
+def apiBaseUrl = rawApiBaseUrl.replaceAll('/+$', '')
+if (apiBaseUrl) {
+    try {
+        def parsedApiBaseUrl = new URI(apiBaseUrl)
+        def localHttpHost = ['localhost', '127.0.0.1', '10.0.2.2'].contains(parsedApiBaseUrl.host?.toLowerCase())
+        if (!(parsedApiBaseUrl.scheme in ['https', 'http']) || !parsedApiBaseUrl.host ||
+                parsedApiBaseUrl.userInfo || parsedApiBaseUrl.query || parsedApiBaseUrl.fragment ||
+                (parsedApiBaseUrl.scheme == 'http' && !localHttpHost)) {
+            throw new GradleException('API_BASE_URL must be an HTTPS URL without credentials/query/fragment (HTTP is allowed only for local development hosts)')
+        }
+    } catch (GradleException error) {
+        throw error
+    } catch (Exception error) {
+        throw new GradleException('API_BASE_URL is not a valid URL', error)
+    }
+}
+def escapedApiBaseUrl = apiBaseUrl.replace('\\', '\\\\').replace('"', '\\"')
+
+def releaseSigningFile = rootProject.file('release-signing.properties')
+def releaseSigning = new Properties()
+if (releaseSigningFile.exists()) {
+    releaseSigningFile.withInputStream { stream -> releaseSigning.load(stream) }
+}
+
+android {
+    compileSdkVersion 30
+    // Pin the toolchain used by CI and the local build helper.
+    buildToolsVersion '30.0.3'
+
+    defaultConfig {
+        applicationId 'com.cornerchair.salon'
+        minSdkVersion 24
+        targetSdkVersion 30
+        versionCode 1
+        versionName '1.0.0'
+        buildConfigField 'String', 'API_BASE_URL', gradleString(apiBaseUrl)
+        buildConfigField 'String', 'SALON_ID', gradleString(configuredSalonId)
+    }
+
+    signingConfigs {
+        release {
+            if (releaseSigningFile.exists()) {
+                storeFile file(releaseSigning.getProperty('storeFile'))
+                storePassword releaseSigning.getProperty('storePassword')
+                keyAlias releaseSigning.getProperty('keyAlias')
+                keyPassword releaseSigning.getProperty('keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (releaseSigningFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // Gradle 6.7.1 must run on Java 8, while this workstation's full JDK is 17.
+    // Allow the build helper to fork javac from that newer JDK without making
+    // the Gradle/Groovy runtime parse Java 17 classes.
+    def compilerHome = System.getenv('ANDROID_JAVA_HOME')
+    if (compilerHome) {
+        tasks.withType(JavaCompile) {
+            options.fork = true
+            options.forkOptions.javaHome = file(compilerHome)
+        }
+    }
+}
