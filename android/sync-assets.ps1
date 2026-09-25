@@ -10,7 +10,11 @@ $assetNames = @(
     'styles.css',
     'manifest.webmanifest',
     'service-worker.js',
-    'icon.svg'
+    'icon.svg',
+    'icon-192.png',
+    'icon-512.png',
+    'icon-maskable-512.png',
+    'apple-touch-icon.png'
 )
 
 New-Item -ItemType Directory -Force -Path $assetDir | Out-Null

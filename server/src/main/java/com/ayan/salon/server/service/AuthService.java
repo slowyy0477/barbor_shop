@@ -30,6 +30,8 @@ public class AuthService {
     /** Wrong-PIN allowance before the account is temporarily locked. */
     private static final int MAX_PIN_ATTEMPTS = 5;
     private static final Duration PIN_LOCK = Duration.ofMinutes(15);
+    /** Owner accounts tried by a password-only sign in before asking for a number. */
+    private static final int MAX_PASSWORD_ONLY_OWNERS = 5;
     private final CustomerRepository customers;
     private final StaffRepository staff;
     private final AuthAccountRepository accounts;
@@ -191,8 +193,15 @@ public class AuthService {
             ActorContext.AuthorizationException.class
     })
     public SessionTokenService.IssuedSession loginWithPin(UUID salonId, String phone, String pin, String userAgent) {
-        if (pin == null || !pin.trim().matches("\\d{4,6}")) {
-            throw new AuthorizationException("Enter your 4 to 6 digit PIN");
+        if (!PinHasher.validSecret(pin)) {
+            throw new AuthorizationException("Enter your 4 to 6 digit PIN or your 10 to 20 character password");
+        }
+        String rawPhone = phone == null ? "" : phone.trim();
+        if (rawPhone.replaceAll("\\D", "").isEmpty()) {
+            // No SMS provider is connected on the laptop server, so the salon
+            // owner must always be able to open the owner workspace with just
+            // the long owner password. Short PINs still require a mobile number.
+            return loginOwnerPasswordOnly(salonId, pin, userAgent);
         }
         String canonical = PhoneIdentity.canonicalPakistani(phone);
         String phoneHash = PhoneIdentity.sha256(canonical);
@@ -208,11 +217,66 @@ public class AuthService {
         if (!PinHasher.matches(pin, record.getPinSalt(), record.getIterations(), record.getPinHash())) {
             record.registerFailure(MAX_PIN_ATTEMPTS, PIN_LOCK);
             pins.save(record);
-            throw new AuthorizationException("Incorrect PIN");
+            throw new AuthorizationException("Incorrect PIN or password");
         }
         record.registerSuccess();
         pins.save(record);
         return sessions.issue(salonId, identity.actorId(), identity.role(), identity.permissions(), userAgent);
+    }
+
+    /**
+     * Owner sign in with the long password and no mobile number. Only the
+     * 10-20 character password shape is accepted here: a 4-6 digit PIN alone
+     * would be too easy to guess without the mobile number as a second key.
+     * Wrong passwords are charged against every configured owner account, so
+     * the usual five-try lockout still applies.
+     */
+    private SessionTokenService.IssuedSession loginOwnerPasswordOnly(UUID salonId, String password, String userAgent) {
+        if (PinHasher.validPin(password)) {
+            throw new AuthorizationException("Add the owner mobile number to sign in with a short PIN, or type the longer owner password.");
+        }
+        java.util.List<AuthAccount> owners = accounts.findBySalonIdAndRoleAndStatus(salonId, ActorRole.OWNER, AccountStatus.ACTIVE);
+        if (owners == null) owners = java.util.List.of();
+        if (owners.isEmpty()) {
+            throw new UnknownAccountException("No owner sign-in is configured for this salon yet");
+        }
+        if (owners.size() > MAX_PASSWORD_ONLY_OWNERS) {
+            throw new AuthorizationException("Too many owner accounts to sign in without a mobile number. Type the owner mobile number.");
+        }
+        Instant now = Instant.now();
+        java.util.List<AuthAccount> ownersWithPin = new java.util.ArrayList<>(owners.size());
+        java.util.List<SignInPin> candidates = new java.util.ArrayList<>(owners.size());
+        for (AuthAccount owner : owners) {
+            pins.lockBySalonIdAndActorId(salonId, owner.getId()).ifPresent(record -> {
+                ownersWithPin.add(owner);
+                candidates.add(record);
+            });
+        }
+        if (candidates.isEmpty()) {
+            throw new PinNotConfiguredException("No owner password is set yet. Add the owner password on the salon laptop first.");
+        }
+        boolean unlockedCandidate = false;
+        for (int index = 0; index < candidates.size(); index++) {
+            SignInPin record = candidates.get(index);
+            if (record.isLocked(now)) continue;
+            unlockedCandidate = true;
+            if (PinHasher.matches(password, record.getPinSalt(), record.getIterations(), record.getPinHash())) {
+                AuthAccount owner = ownersWithPin.get(index);
+                record.registerSuccess();
+                pins.save(record);
+                return sessions.issue(salonId, owner.getId(), owner.getRole(),
+                        parsePermissions(owner.getPermissionsJson()), userAgent);
+            }
+        }
+        if (!unlockedCandidate) {
+            throw new AuthorizationException("Too many incorrect password attempts. Try again in a few minutes.");
+        }
+        for (SignInPin record : candidates) {
+            if (record.isLocked(now)) continue;
+            record.registerFailure(MAX_PIN_ATTEMPTS, PIN_LOCK);
+            pins.save(record);
+        }
+        throw new AuthorizationException("Incorrect owner password");
     }
 
     /**
@@ -225,7 +289,9 @@ public class AuthService {
             ActorContext.AuthorizationException.class
     })
     public void setActorPin(UUID salonId, UUID actorId, String currentPin, String newPin) {
-        if (!PinHasher.validPin(newPin)) throw new IllegalArgumentException("Choose a 4 to 6 digit PIN");
+        if (!PinHasher.validSecret(newPin)) {
+            throw new IllegalArgumentException("Choose a 4 to 6 digit PIN or a 10 to 20 character password");
+        }
         java.util.Optional<SignInPin> existing = pins.lockBySalonIdAndActorId(salonId, actorId);
         if (existing.isEmpty()) {
             assignPin(salonId, actorId, newPin);
@@ -253,7 +319,9 @@ public class AuthService {
      */
     @Transactional
     public void ensureActorPin(UUID salonId, UUID actorId, String pin) {
-        if (!PinHasher.validPin(pin)) throw new IllegalArgumentException("Choose a 4 to 6 digit PIN");
+        if (!PinHasher.validSecret(pin)) {
+            throw new IllegalArgumentException("Choose a 4 to 6 digit PIN or a 10 to 20 character password");
+        }
         java.util.Optional<SignInPin> existing = pins.findBySalonIdAndActorId(salonId, actorId);
         if (existing.isPresent()) {
             SignInPin record = existing.get();
@@ -268,7 +336,9 @@ public class AuthService {
     }
 
     private void assignPin(UUID salonId, UUID actorId, String pin) {
-        if (!PinHasher.validPin(pin)) throw new IllegalArgumentException("Choose a 4 to 6 digit PIN");
+        if (!PinHasher.validSecret(pin)) {
+            throw new IllegalArgumentException("Choose a 4 to 6 digit PIN or a 10 to 20 character password");
+        }
         String salt = PinHasher.newSalt();
         pins.save(new SignInPin(salonId, actorId,
                 PinHasher.hash(pin, salt, PinHasher.DEFAULT_ITERATIONS), salt, PinHasher.DEFAULT_ITERATIONS));

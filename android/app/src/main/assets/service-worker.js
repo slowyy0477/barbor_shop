@@ -1,5 +1,5 @@
-const CACHE_NAME = "ayan-beauty-salon-shell-v14";
-const APP_SHELL = ["./", "./index.html", "./styles.css?v=ayan12", "./api-client.js?v=ayan5", "./app.js?v=ayan14", "./manifest.webmanifest", "./icon.svg"];
+const CACHE_NAME = "salon-shell-v15";
+const APP_SHELL = ["./", "./index.html", "./styles.css?v=ayan13", "./api-client.js?v=ayan6", "./app.js?v=ayan15", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png", "./apple-touch-icon.png"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
   self.skipWaiting();

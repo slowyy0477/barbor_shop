@@ -60,7 +60,13 @@ public class AuthController {
     public record CustomerRegisterRequest(@NotNull UUID salonId, @NotNull UUID challengeId, @NotBlank String code,
                                           @NotBlank String phone, @NotBlank String name, boolean marketingConsent,
                                           String pin) {}
-    public record PinVerifyRequest(@NotNull UUID salonId, @NotBlank String phone, @NotBlank String pin) {}
+    /**
+     * The mobile number is optional: the salon owner can open the owner
+     * workspace with the long owner password alone when no SMS provider is
+     * connected. Customer PIN sign-in still needs the number because short
+     * PINs are never accepted without it.
+     */
+    public record PinVerifyRequest(@NotNull UUID salonId, String phone, @NotBlank String pin) {}
     public record SessionResponse(String accessToken, Instant expiresAt, UUID salonId, UUID actorId, String role) {
         static SessionResponse from(SessionTokenService.IssuedSession value) {
             return new SessionResponse(value.token(), value.expiresAt(), value.salonId(), value.actorId(), value.role().name());

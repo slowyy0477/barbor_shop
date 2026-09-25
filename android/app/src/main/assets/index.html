@@ -7,17 +7,19 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Ayan Salon" />
-    <meta name="description" content="Ayan Beauty Salon booking, wallet, reminders and owner dashboard app for PKR." />
+    <meta name="apple-mobile-web-app-title" content="Salon" />
+    <meta name="description" content="Neighbourhood salon bookings, wallet credit, reminders and an owner dashboard in PKR." />
     <meta name="api-base-url" content="" />
     <meta name="salon-id" content="00000000-0000-0000-0000-000000000001" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="icon.svg" />
-    <title>Ayan Beauty Salon | Salon OS</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png" />
+    <title>Salon</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=ayan12" />
+    <link rel="stylesheet" href="styles.css?v=ayan13" />
   </head>
   <body>
     <div id="app" aria-live="polite"></div>
@@ -134,7 +136,7 @@
           element.onerror = done;
           document.body.appendChild(element);
         });
-        boot.then(() => load("api-client.js?v=ayan5")).then(() => load("app.js?v=ayan14"));
+        boot.then(() => load("api-client.js?v=ayan6")).then(() => load("app.js?v=ayan15"));
       })();
     </script>
     <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js').catch(() => {});</script>

@@ -242,7 +242,9 @@ function nativeSalonName() {
 const baseState = () => ({
   schemaVersion: APP_SCHEMA_VERSION,
   releaseMode: false,
-  salon: { id: "salon_ayan_beauty", name: "Ayan Beauty Salon", tagline: "Premium neighbourhood grooming", phone: "0310 5301460", address: "VC8Q+R33 Ayan Beauty Salon, Uqab Plaza, Gate Number 2, Katba Village, Kamra Kalan", hours: "08:00 - 23:00", timezone: "Asia/Karachi", currency: "PKR", themeColor: DEFAULT_THEME_COLOR, logoDataUrl: "" },
+  // A fresh install ships with no salon name, phone or address: the owner fills
+  // those in from Owner settings and every screen picks them up immediately.
+  salon: { id: "salon_local", name: "", tagline: "Bookings, wallet and reminders", phone: "", address: "", hours: "08:00 - 23:00", timezone: "Asia/Karachi", currency: "PKR", themeColor: DEFAULT_THEME_COLOR, logoDataUrl: "" },
   settings: { walletTopUp: 500, walletBonus: 50, walletExpiryDays: 180, reminderDefaultDays: 25, referralEnabled: true, referralReferrerReward: 100, referralNewCustomerDiscount: 100, monthlyReferralLimit: 30, cancellationHours: 4, promotionsEnabled: true, withdrawalMinimum: 100, withdrawalDailyLimit: 10000, ownerAccessCodeHash: hashOwnerAccessCode(DEFAULT_OWNER_ACCESS_CODE) },
   services: [
     { id: "svc_haircut", name: "Classic Haircut", category: "Hair", price: 800, duration: 35, repeatDays: 25, active: true },
@@ -268,10 +270,10 @@ const baseState = () => ({
   haircutStyles: [],
   customers: [], bookings: [], visits: [], walletTransactions: [], reminders: [], deposits: [], withdrawals: [], referrals: [], currentCustomerId: null, audit: [],
   paymentMethods: [
-    { provider: "Easypaisa", displayName: "Easypaisa", accountTitle: "Ayan Beauty Salon", accountNumber: "03105301460", qrCode: "", instructions: "Send the exact amount, then submit the reference ID. Owner verifies it manually.", enabled: true, mode: "MANUAL", sortOrder: 1 },
-    { provider: "JazzCash", displayName: "JazzCash", accountTitle: "Ayan Beauty Salon", accountNumber: "03105301460", qrCode: "", instructions: "Use the salon account and keep your transaction reference.", enabled: true, mode: "MANUAL", sortOrder: 2 },
-    { provider: "NayaPay", displayName: "NayaPay", accountTitle: "Ayan Beauty Salon", accountNumber: "03105301460", qrCode: "", instructions: "Manual verification is required before wallet credit is released.", enabled: true, mode: "MANUAL", sortOrder: 3 },
-    { provider: "SadaPay", displayName: "SadaPay", accountTitle: "Ayan Beauty Salon", accountNumber: "03105301460", qrCode: "", instructions: "Do not share your PIN. Submit only the payment reference.", enabled: true, mode: "MANUAL", sortOrder: 4 }
+    { provider: "Easypaisa", displayName: "Easypaisa", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Send the exact amount, then submit the reference ID. Owner verifies it manually.", enabled: true, mode: "MANUAL", sortOrder: 1 },
+    { provider: "JazzCash", displayName: "JazzCash", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Use the salon account and keep your transaction reference.", enabled: true, mode: "MANUAL", sortOrder: 2 },
+    { provider: "NayaPay", displayName: "NayaPay", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Manual verification is required before wallet credit is released.", enabled: true, mode: "MANUAL", sortOrder: 3 },
+    { provider: "SadaPay", displayName: "SadaPay", accountTitle: "", accountNumber: "", qrCode: "", instructions: "Do not share your PIN. Submit only the payment reference.", enabled: true, mode: "MANUAL", sortOrder: 4 }
   ]
 });
 
@@ -1112,6 +1114,15 @@ function salonDisplayName() {
   return name || "Your salon";
 }
 
+// No brand letters are baked into the app. Until the owner uploads a logo we
+// show the first letter of the salon name the owner typed, or a neutral
+// scissors mark when the name is still empty.
+function salonMarkGlyph() {
+  const name = String((typeof state !== "undefined" && state?.salon?.name) || "").trim();
+  const letter = name.replace(/[^A-Za-z0-9]/g, "").charAt(0);
+  return letter ? letter.toUpperCase() : "\u2702";
+}
+
 function statusTag(status) {
   const map = { Completed: "success", Approved: "success", Confirmed: "success", Credited: "success", Rewarded: "success", Sent: "success", Registered: "pink", Published: "success", Hidden: "neutral", Pending: "warning", "Pending verification": "warning", "Pending visit": "warning", Scheduled: "warning", Invited: "neutral", Cancelled: "danger", "No-show": "danger", Rejected: "danger", Failed: "danger", "Opted out": "neutral", Debited: "neutral", Refunded: "danger", Reversed: "danger", Withdrawal: "neutral" };
   return `<span class="tag tag-${map[status] || "neutral"}">${escapeHtml(status)}</span>`;
@@ -1125,11 +1136,16 @@ function brandMarkMarkup(className = "brand-mark") {
   const logo = safeImageSource(state?.salon?.logoDataUrl);
   return logo
     ? `<img class="${className} brand-image" src="${logo}" alt="${htmlesc(salonDisplayName())} logo">`
-    : `<div class="${className}" aria-hidden="true">AB</div>`;
+    : `<div class="${className}" aria-hidden="true">${htmlesc(salonMarkGlyph())}</div>`;
 }
 
 function render() {
   const app = document.getElementById("app");
+  // The browser tab, the installed web app and the phone task switcher show the
+  // owner's own salon name as soon as it is known - never a hard-coded name.
+  const brandName = String(state?.salon?.name || "").trim();
+  const wantedTitle = brandName ? `${brandName} | Salon` : "Salon";
+  if (document.title !== wantedTitle) document.title = wantedTitle;
   applyWalletExpiry();
   applyVisualPreferences();
   if (ui.role === "owner" && !ownerSessionActive()) {
@@ -1240,7 +1256,7 @@ function haircutStylesSection() {
     const price = Number.isSafeInteger(Number(style.price)) ? Number(style.price) : Number(linkedService?.price || 0);
     const media = photo
       ? `<img src="${photo}" alt="${htmlesc(style.name)} haircut style" loading="lazy">`
-      : `<div class="style-card-placeholder" aria-hidden="true"><span>AB</span></div>`;
+      : `<div class="style-card-placeholder" aria-hidden="true"><span>${htmlesc(salonMarkGlyph())}</span></div>`;
     const action = linkedService
       ? `<button class="btn btn-soft btn-small" data-action="book-haircut-style" data-style-id="${htmlesc(style.id)}">Book this look</button>`
       : `<span class="tag tag-neutral">Ask at salon</span>`;
@@ -1347,7 +1363,7 @@ function ownerSettingsV2() { const methods = state.paymentMethods || []; const d
 
 function ownerBrandingPanel() {
   const logo = safeImageSource(state?.salon?.logoDataUrl);
-  const preview = logo ? `<div class="logo-preview"><img src="${logo}" alt="Current salon logo"><button class="btn btn-ghost btn-small" data-action="remove-logo">Remove logo</button></div>` : `<div class="logo-placeholder">AB</div>`;
+  const preview = logo ? `<div class="logo-preview"><img src="${logo}" alt="Current salon logo"><button class="btn btn-ghost btn-small" data-action="remove-logo">Remove logo</button></div>` : `<div class="logo-placeholder">${htmlesc(salonMarkGlyph())}</div>`;
   const logoEditor = apiModeEnabled()
     ? `<input type="file" accept="image/*" data-logo-input><small>Choose a square JPG, PNG or WEBP up to 2 MB. The app compresses it and uploads it through the authenticated salon API.</small><label class="form-field" style="margin-top:8px"><span>Or use an existing HTTPS image URL</span><input type="url" data-salon-logo-url value="${htmlesc(logo && !logo.startsWith("data:") ? logo : "")}" placeholder="https://images.example.com/ayan-logo.webp"></label>`
     : `<input type="file" accept="image/*" data-logo-input><small>Choose a square JPG, PNG or WEBP up to 2 MB. It is compressed before saving on this device.</small>`;
@@ -1395,9 +1411,9 @@ function ownerLookupModal() {
   const busy = ui.apiBusy ? "disabled" : "";
   const message = m.error ? `<div class="notice notice-warning" role="alert">${htmlesc(m.error)}</div>` : "";
   if (m.stage === "otp") {
-    return modalShell("Verify owner mobile", `Enter the six-digit code sent to ${maskPakistaniMobile(m.phone)}.`, `<div class="form-grid"><div class="form-field"><label for="owner-otp">Verification code</label><input id="owner-otp" data-owner-otp inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" ${busy}></div>${message}<div class="notice notice-info">Only an owner or authorized staff account can open this workspace.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-secondary btn-small" data-action="resend-owner-otp" ${busy}>Send again</button><button class="btn btn-primary" data-action="verify-owner-otp" ${busy}>Verify & open</button>`);
+    return modalShell("Verify owner mobile", `Enter the six-digit code sent to ${maskPakistaniMobile(m.phone)}.`, `<div class="form-grid"><div class="form-field"><label for="owner-otp">Verification code</label><input id="owner-otp" data-owner-otp inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" ${busy}></div>${message}<div class="notice notice-info">No mobile provider connected yet? Every code is also written on the salon laptop. Run <strong>ops\\show-last-code.cmd</strong> there, read the newest code and type it here. Codes expire in about five minutes.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft btn-small" data-action="owner-use-password" ${busy}>Use password</button><button class="btn btn-secondary btn-small" data-action="resend-owner-otp" ${busy}>Send again</button><button class="btn btn-primary" data-action="verify-owner-otp" ${busy}>Verify & open</button>`);
   }
-  return modalShell("Owner sign in", "The owner workspace is protected by mobile OTP. Customers never see its menu.", `<div class="form-grid"><div class="form-field"><label for="owner-phone">Owner Pakistani mobile</label><input id="owner-phone" data-owner-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(m.phone || "")}" ${busy}><small>Use the phone number configured for the salon owner or staff account.</small></div>${message}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="request-owner-otp" ${busy}>Send code</button>`);
+  return modalShell("Owner sign in", "Type the owner password. Customers never see this workspace.", `<div class="form-grid"><div class="form-field"><label for="owner-secret">Owner password</label><input id="owner-secret" data-owner-secret type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="10 to 20 characters" ${busy}><small>On the salon laptop run ops\\show-owner-password.cmd if you forgot it. Five wrong tries pause sign-in for 15 minutes.</small></div><div class="form-field"><label for="owner-phone">Owner mobile (optional)</label><input id="owner-phone" data-owner-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="Leave empty to use the password alone" value="${htmlesc(m.phone || "")}" ${busy}><small>Only needed for the "Send code instead" option, or when you want to sign in with a short 4 to 6 digit PIN.</small></div>${message}<div class="notice notice-info">The password is stored only as a salted digest on your own laptop. Prefer a mobile code? Tap "Send code instead" and read the newest code with ops\\show-last-code.cmd.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="request-owner-otp" ${busy}>Send code instead</button><button class="btn btn-primary" data-action="owner-password-login" ${busy}>Sign in</button>`);
 }
 function ownerCodeModal() {
   return modalShell("Change owner code", "Choose a new code for the private owner workspace.", `<div class="form-grid"><div class="form-field"><label for="new-owner-code">New access code</label><input id="new-owner-code" type="password" inputmode="text" autocomplete="new-password" data-new-owner-code placeholder="6 to 32 letters or numbers"></div><div class="form-field"><label for="confirm-owner-code">Confirm access code</label><input id="confirm-owner-code" type="password" inputmode="text" autocomplete="new-password" data-confirm-owner-code placeholder="Repeat the new code"></div><small>The code is stored locally as a digest. Keep it private and replace the initial code before distribution.</small></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="save-owner-code">Save new code</button>`);
@@ -1528,14 +1544,18 @@ function openOwnerGate() {
   ownerTapCount = 0;
   ownerTapWindowStartedAt = 0;
   ui.modal = apiModeEnabled()
-    ? { type: "owner-lookup", stage: "phone", phone: "", error: "" }
+    ? { type: "owner-lookup", stage: "password", phone: "", error: "" }
     : { type: "owner-login", error: "" };
   render();
-  setTimeout(() => document.querySelector(apiModeEnabled() ? "[data-owner-phone]" : "[data-owner-access-code]")?.focus(), 0);
+  setTimeout(() => {
+    // The password is the primary owner key, so focus it first.
+    const selector = apiModeEnabled() ? "[data-owner-secret]" : "[data-owner-access-code]";
+    document.querySelector(selector)?.focus();
+  }, 0);
 }
 
 function unlockOwner() {
-  if (apiModeEnabled()) { toast("Use the owner mobile number and OTP to sign in.", "error"); return; }
+  if (apiModeEnabled()) { toast("Open the owner workspace from the salon logo, or use the Owner sign in button.", "error"); return; }
   if (Date.now() < ownerLockoutUntil) { render(); return; }
   const input = document.querySelector("[data-owner-access-code]");
   const code = String(input?.value || "").trim();
@@ -1766,9 +1786,24 @@ async function finishApiSession(session, context = {}) {
 
 async function requestApiOtp(registration = false) {
   const modalState = ui.modal || { type: "lookup" };
-  const phone = registration ? modalState.phone : apiPhoneInput();
+  // The registration step has its own mobile field, and the customer may
+  // correct the number there, so read that field first. Reading only the
+  // earlier stage sent an empty number and bounced the customer back to the
+  // sign-in screen instead of creating the profile.
+  const typedRegistrationPhone = registration
+    ? String(document.querySelector("[data-api-customer-phone]")?.value || "").trim()
+    : "";
+  let phone = "";
+  try {
+    phone = canonicalPakistaniPhone(registration ? (typedRegistrationPhone || modalState.phone || "") : apiPhoneInput());
+  } catch (_) {
+    phone = "";
+  }
   if (!isValidPakistaniMobile(phone)) {
-    modalState.error = "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
+    modalState.error = registration
+      ? "Enter the complete mobile number that should receive the code, for example 0300 123 4567."
+      : "Enter a complete Pakistani mobile number, for example 0300 123 4567.";
+    if (registration && typedRegistrationPhone) modalState.phone = typedRegistrationPhone;
     modalState.stage = registration ? "register" : "phone";
     ui.modal = modalState;
     render();
@@ -1884,6 +1919,68 @@ async function verifyOwnerOtp() {
   }
 }
 
+/**
+ * Owner sign-in with the longer owner password (or the legacy 4-6 digit PIN).
+ * This path needs no mobile provider, which is what makes owner sign-in work on
+ * a laptop that has no SMS account connected yet.
+ */
+async function submitOwnerPassword() {
+  const modalState = ui.modal || { type: "owner-lookup" };
+  // The mobile number is optional: with the long owner password the owner can
+  // sign in on any phone without first registering that number.
+  const typedPhone = String(document.querySelector("[data-owner-phone]")?.value || modalState.phone || "").trim();
+  let phone = "";
+  if (typedPhone) {
+    try { phone = canonicalPakistaniPhone(typedPhone); } catch (_) { phone = ""; }
+  }
+  const secret = String(document.querySelector("[data-owner-secret]")?.value || "").trim();
+  if (typedPhone && !isValidPakistaniMobile(phone)) {
+    modalState.error = "That mobile number looks incomplete. Fix it, or clear the box and sign in with the password alone.";
+    modalState.stage = "password";
+    ui.modal = modalState;
+    render();
+    return;
+  }
+  if (secret.length < 4) {
+    modalState.error = "Enter the owner password (10 to 20 characters). Without a mobile number a short PIN cannot be used.";
+    modalState.stage = "password";
+    ui.modal = modalState;
+    render();
+    return;
+  }
+  if (!phone && secret.length < 10) {
+    modalState.error = "Type the owner mobile number as well, or use the full 10 to 20 character owner password.";
+    modalState.stage = "password";
+    ui.modal = modalState;
+    render();
+    return;
+  }
+  ui.apiBusy = true;
+  modalState.error = "";
+  modalState.phone = phone;
+  render();
+  let handled = false;
+  try {
+    const session = await window.AyanApi.verifyPin(phone, secret, apiSalonId());
+    if (String(session?.role || "").toUpperCase() !== "OWNER") {
+      window.AyanApi.clearSession();
+      throw new Error("That account is not the salon owner.");
+    }
+    await finishApiSession(session, {});
+    handled = true;
+    return;
+  } catch (error) {
+    modalState.error = apiErrorText(error, "That password or PIN was not accepted.");
+    modalState.stage = "password";
+  } finally {
+    if (!handled) {
+      ui.apiBusy = false;
+      ui.modal = modalState;
+      render();
+    }
+  }
+}
+
 async function verifyApiOtp() {
   const modalState = ui.modal || {};
   const code = String(document.querySelector("[data-lookup-otp]")?.value || "").trim();
@@ -1968,10 +2065,23 @@ function handleAction(e) {
   if (action === "verify-owner-otp") { verifyOwnerOtp(); return; }
   if (action === "request-otp") { requestApiOtp(false); return; }
   if (action === "resend-otp") { requestApiOtp(false); return; }
-  if (action === "begin-registration") { if (ui.modal) { ui.modal.stage = "register"; ui.modal.error = ""; render(); } return; }
+  if (action === "begin-registration") {
+    if (ui.modal) {
+      // Carry the number the customer already typed into the registration form.
+      const typed = String(document.querySelector("[data-lookup-phone]")?.value || ui.modal.phone || "").trim();
+      if (typed) ui.modal.phone = typed;
+      ui.modal.stage = "register";
+      ui.modal.error = "";
+      render();
+    }
+    return;
+  }
+  if (action === "back-to-phone") { if (ui.modal) { ui.modal.stage = "phone"; ui.modal.error = ""; render(); } return; }
   if (action === "back-to-registration") { if (ui.modal) { ui.modal.stage = "register"; ui.modal.error = ""; render(); } return; }
   if (action === "request-registration-otp") { requestApiOtp(true); return; }
   if (action === "verify-otp") { verifyApiOtp(); return; }
+  if (action === "owner-password-login") { submitOwnerPassword(); return; }
+  if (action === "owner-use-password") { if (ui.modal) { ui.modal.stage = "password"; ui.modal.error = ""; render(); setTimeout(() => document.querySelector("[data-owner-secret]")?.focus(), 0); } return; }
   if(action === "open-booking") { openBooking({serviceId:el.dataset.serviceId,customerId:el.dataset.customerId,source:el.dataset.source}); return; }
   if(action === "book-haircut-style") { const style = (state.haircutStyles || []).find((item) => item.id === el.dataset.styleId); if (style?.serviceId && service(style.serviceId)?.active) openBooking({ serviceId: style.serviceId, source: "Style card" }); else toast("Ask the salon owner to link this style to a bookable service.", "error"); return; }
   if(action === "customer-lookup") { ui.modal={type:"lookup",phone:"",searched:false,stage:apiModeEnabled()?"phone":undefined};render();return; }
@@ -2655,7 +2765,7 @@ function ownerHaircutStylesPanel() {
     const photo = safeImageSource(style.photoDataUrl || style.photo);
     const linked = style.serviceId ? service(style.serviceId) : null;
     const isPublished = style.active !== false;
-    const thumbnail = photo ? `<img class="style-thumb" src="${photo}" alt="${htmlesc(style.name)}">` : `<span class="style-thumb-placeholder">AB</span>`;
+    const thumbnail = photo ? `<img class="style-thumb" src="${photo}" alt="${htmlesc(style.name)}">` : `<span class="style-thumb-placeholder">${htmlesc(salonMarkGlyph())}</span>`;
     const linkNote = linked ? ` · books ${htmlesc(linked.name)}` : " · no booking link yet";
     return `<div class="list-row style-admin-row${isPublished ? "" : " is-hidden-style"}"><div class="style-admin-media">${thumbnail}</div><div class="list-row-main"><div class="list-title">${htmlesc(style.name)} ${statusTag(isPublished ? "Published" : "Hidden")}</div><div class="list-meta">${money(style.price)}${linkNote}</div>${style.description ? `<div class="list-meta">${htmlesc(style.description)}</div>` : ""}</div><div class="style-admin-actions"><button class="btn btn-secondary btn-small" data-action="edit-haircut-style" data-style-id="${style.id}">Edit</button><button class="btn btn-secondary btn-small" data-action="toggle-haircut-style" data-style-id="${style.id}" data-next-active="${isPublished ? "false" : "true"}">${isPublished ? "Hide" : "Show"}</button><button class="btn btn-ghost btn-small" data-action="remove-haircut-style" data-style-id="${style.id}">Remove</button></div></div>`;
   }).join("");
@@ -2841,7 +2951,7 @@ function customerMoreScreenBase() {
   const referralHistory = (state.referrals || []).find((r) => r.referredCustomerId === c.id);
   const canClaim = state.settings.referralEnabled !== false && !referralHistory && customerVisitCount(c.id) === 0;
   const claimBlock = canClaim
-    ? `<div class="form-field"><label>Have a referral code?</label><div style="display:flex;gap:8px"><input data-referral-claim-code placeholder="e.g. AYAN100" autocomplete="off"><button class="btn btn-soft btn-small" data-action="claim-referral">Apply code</button></div><small>The discount applies to your first paid visit. The referrer reward stays pending until completion.</small></div>`
+    ? `<div class="form-field"><label>Have a referral code?</label><div style="display:flex;gap:8px"><input data-referral-claim-code placeholder="e.g. SALON100" autocomplete="off"><button class="btn btn-soft btn-small" data-action="claim-referral">Apply code</button></div><small>The discount applies to your first paid visit. The referrer reward stays pending until completion.</small></div>`
     : referralHistory ? `<div class="notice ${referralHistory.status === "Rejected" ? "notice-warning" : "notice-info"}" style="margin-top:14px">Referral claim ${statusTag(referralHistory.status)}. It cannot be changed after signup.</div>`
       : state.settings.referralEnabled === false ? `<div class="notice notice-info" style="margin-top:14px">Referral claims are currently paused by the salon.</div>` : "";
   return `<div class="page-head"><div class="page-title"><div class="eyebrow">More</div><h1>Your salon account.</h1><p>Keep your profile current, share your referral code, and choose how we contact you.</p></div></div><div class="settings-grid"><div class="surface panel"><div class="section-head"><h2>My profile</h2><button class="btn btn-secondary btn-small" data-action="edit-my-profile">Edit</button></div><div class="settings-line"><span>Name</span><strong>${htmlesc(c.name)}</strong></div><div class="settings-line"><span>Mobile</span><strong>${htmlesc(c.phone)}</strong></div><div class="settings-line"><span>Last visit</span><strong>${dateLabel(c.lastVisit)}</strong></div><div class="settings-line"><span>Promotional messages</span><strong><button class="toggle ${c.consent ? "on" : ""}" data-action="toggle-consent" aria-label="Toggle promotional messages"></button></strong></div><div class="notice notice-info" style="margin-top:13px">We only send service reminders and offers when you agree. You can opt out any time.</div></div><div class="surface panel"><div class="section-head"><h2>Refer & earn</h2><span class="tag tag-pink">${money(state.settings.referralReferrerReward)} reward</span></div><p class="list-meta" style="font-size:13px;margin-bottom:15px">Invite a friend. Your reward stays pending until their first paid visit is completed.</p><div class="summary-box" style="margin-bottom:13px"><div class="summary-line"><span>Your code</span><strong>${htmlesc(referralCode)}</strong></div><div class="summary-line"><span>Friend gets</span><strong>${money(state.settings.referralNewCustomerDiscount)} off</strong></div><div class="summary-line"><span>You get</span><strong>${money(state.settings.referralReferrerReward)} credit</strong></div></div><button class="btn btn-primary btn-block" data-action="share-referral" data-referral-code="${htmlesc(referralCode)}">Share code</button>${claimBlock}<div class="section" style="margin-top:17px"><div class="list">${refs.length ? refs.map((r) => `<div class="list-row"><div class="list-row-main"><div class="list-title">${htmlesc(r.code)}</div><div class="list-meta">Created ${dateLabel(r.createdAt)} · ${r.referredCustomerId ? customerName(r.referredCustomerId) : "Waiting for signup"}</div></div>${statusTag(r.status)}</div>`).join("") : `<div class="empty-state"><strong>No referrals yet</strong>Your shared referrals will be tracked here.</div>`}</div></div></div></div>`;
@@ -2863,7 +2973,7 @@ function customerModal() {
   const m = ui.modal; const isNew = !m.customerId; const existing = state.customers.find((x) => x.id === m.customerId);
   const c = existing || { name: "", phone: m.phone || "", consent: false, lastVisit: null };
   const title = m.signup ? "Create your salon profile" : isNew ? "Add customer" : "Edit customer";
-  const referralField = isNew ? `<div class="form-field"><label>Referral code (optional)</label><input data-customer-referral-code placeholder="e.g. AYAN100" autocomplete="off"><small>Applied only after this mobile is verified and before the first paid visit.</small></div>` : "";
+  const referralField = isNew ? `<div class="form-field"><label>Referral code (optional)</label><input data-customer-referral-code placeholder="e.g. SALON100" autocomplete="off"><small>Applied only after this mobile is verified and before the first paid visit.</small></div>` : "";
   const existingPin = !m.signup && m.customerId ? (state.customers || []).find((item) => item.id === m.customerId) : null;
   const pinFields = m.signup && !apiModeEnabled()
     ? `<div class="form-grid two"><div class="form-field"><label>Create a 4 to 6 digit PIN</label><input data-customer-pin type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••"><small>Your mobile number plus this PIN open your profile.</small></div><div class="form-field"><label>Confirm PIN</label><input data-customer-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••"></div></div>`
@@ -3106,7 +3216,7 @@ function stylePhotoModal() {
   const price = Number.isSafeInteger(Number(style.price)) ? Number(style.price) : Number(linkedService?.price || 0);
   const media = photo
     ? `<img src="${photo}" alt="${htmlesc(style.name)} haircut style">`
-    : `<div class="style-card-placeholder" aria-hidden="true"><span>AB</span></div>`;
+    : `<div class="style-card-placeholder" aria-hidden="true"><span>${htmlesc(salonMarkGlyph())}</span></div>`;
   return modalShell(htmlesc(style.name), style.description ? htmlesc(style.description) : "Fresh from the salon chair.", `<div class="style-photo-stage">${media}</div><div class="summary-box" style="margin-top:14px"><div class="summary-line"><span>Price</span><strong>${money(price)}</strong></div>${linkedService ? `<div class="summary-line"><span>Booking</span><strong>${htmlesc(linkedService.name)} · ${linkedService.duration} mins</strong></div>` : `<div class="summary-line"><span>Booking</span><strong>Ask at the salon</strong></div>`}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Close</button>${linkedService ? `<button class="btn btn-primary" data-action="book-haircut-style" data-style-id="${htmlesc(style.id)}">Book this look</button>` : `<button class="btn btn-primary" data-action="open-booking">Choose a service</button>`}`);
 }
 
@@ -3134,12 +3244,13 @@ function lookupModal() {
       const unknownHint = !registration && m.unknown
         ? `<div class="notice notice-info">No existing profile was found. You can create one after this code step.</div><button class="btn btn-soft btn-small" data-action="begin-registration" ${busy}>Create new profile</button>`
         : "";
-      return modalShell(title, description, `<div class="form-grid"><div class="form-field"><label for="lookup-otp">Verification code</label><input id="lookup-otp" data-lookup-otp inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" ${busy}><small>Codes expire shortly and can be used only once.</small></div>${message}${unknownHint}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button>${switchAction}<button class="btn btn-primary" data-action="verify-otp" ${busy}>${registration ? "Create profile" : "Verify & continue"}</button>`);
+      const codeHelp = `<div class="notice notice-info">No SMS is connected yet, so the newest code is written on the salon laptop. On that laptop run <strong>ops\\show-last-code.cmd</strong> to read it out. Codes expire in about five minutes and work once.</div>`;
+      return modalShell(title, description, `<div class="form-grid"><div class="form-field"><label for="lookup-otp">Verification code</label><input id="lookup-otp" data-lookup-otp inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" ${busy}><small>Codes expire shortly and can be used only once.</small></div>${message}${unknownHint}${codeHelp}</div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button>${switchAction}<button class="btn btn-primary" data-action="verify-otp" ${busy}>${registration ? "Create profile" : "Verify & continue"}</button>`);
     }
     if (stage === "register") {
-      return modalShell("Create your salon profile", `First verify ${maskPakistaniMobile(phone)}, then we will create a profile for this salon.`, `<div class="form-grid"><div class="form-field"><label for="api-customer-name">Your name</label><input id="api-customer-name" data-api-customer-name autocomplete="name" placeholder="Full name" value="${htmlesc(m.name || "")}" ${busy}></div><div class="form-grid two"><div class="form-field"><label for="api-customer-pin">Create a 4 to 6 digit PIN</label><input id="api-customer-pin" data-api-customer-pin type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${busy}><small>Next time your mobile number and this PIN sign you in without a code.</small></div><div class="form-field"><label for="api-customer-pin-confirm">Confirm PIN</label><input id="api-customer-pin-confirm" data-api-customer-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${busy}></div></div><label class="check-row"><input type="checkbox" data-api-customer-consent ${m.consent ? "checked" : ""} ${busy}> I agree to service reminders and promotional messages from this salon.</label>${message}<div class="notice notice-info">A fresh verification code is required before the account is created. Your name, PIN and consent are sent only after the code is verified.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-primary" data-action="request-registration-otp" ${busy}>Send verification code</button>`);
+      return modalShell("Create your salon profile", `First verify the mobile number, then we will create a profile for this salon.`, `<div class="form-grid"><div class="form-field"><label for="api-customer-phone">Mobile number</label><input id="api-customer-phone" data-api-customer-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>This number becomes your profile key and receives the verification code.</small></div><div class="form-field"><label for="api-customer-name">Your name</label><input id="api-customer-name" data-api-customer-name autocomplete="name" placeholder="Full name" value="${htmlesc(m.name || "")}" ${busy}></div><div class="form-grid two"><div class="form-field"><label for="api-customer-pin">Create a 4 to 6 digit PIN</label><input id="api-customer-pin" data-api-customer-pin type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${busy}><small>Next time your mobile number and this PIN sign you in without a code.</small></div><div class="form-field"><label for="api-customer-pin-confirm">Confirm PIN</label><input id="api-customer-pin-confirm" data-api-customer-pin-confirm type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" placeholder="••••" ${busy}></div></div><label class="check-row"><input type="checkbox" data-api-customer-consent ${m.consent ? "checked" : ""} ${busy}> I agree to service reminders and promotional messages from this salon.</label>${message}<div class="notice notice-info">A fresh verification code is required before the account is created. Your name, PIN and consent are sent only after the code is verified.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft btn-small" data-action="back-to-phone" ${busy}>Back</button><button class="btn btn-primary" data-action="request-registration-otp" ${busy}>Send verification code</button>`);
     }
-    return modalShell("Sign in with mobile", "Your mobile number and PIN open your salon profile. No customer data is shown before sign-in is accepted.", `<div class="form-grid"><div class="form-field"><label for="lookup-phone">Pakistani mobile number</label><input id="lookup-phone" data-lookup-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>Use the complete number, for example 0300 123 4567.</small></div>${message}<div class="notice notice-info">Not set a PIN yet? Use the verification code once, then create your PIN from your profile.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="request-otp" ${busy}>Send code instead</button><button class="btn btn-primary" data-action="submit-api-pin" ${busy}>Sign in with PIN</button>`);
+    return modalShell("Sign in or create your profile", "Your mobile number and PIN open your salon profile. New here? Create your profile in a few steps.", `<div class="form-grid"><div class="form-field"><label for="lookup-phone">Pakistani mobile number</label><input id="lookup-phone" data-lookup-phone type="tel" inputmode="tel" autocomplete="tel" placeholder="03xx xxx xxxx" value="${htmlesc(phone)}" ${busy}><small>Use the complete number, for example 0300 123 4567.</small></div>${message}<div class="notice notice-info">Not set a PIN yet? Use the verification code once, then create your PIN from your profile. New customer? Tap Create new account.</div></div>`, `<button class="btn btn-secondary" data-action="close-modal">Cancel</button><button class="btn btn-soft" data-action="request-otp" ${busy}>Send code instead</button><button class="btn btn-soft" data-action="begin-registration" ${busy}>Create new account</button><button class="btn btn-primary" data-action="submit-api-pin" ${busy}>Sign in with PIN</button>`);
   }
   const matches = m.searched && valid ? (state.customers || []).filter((c) => samePakistaniMobile(c.phone, phone)) : [];
   const match = matches.length === 1 ? matches[0] : null;
@@ -3167,7 +3278,7 @@ function lookupModal() {
     result = `<div class="notice notice-warning">Enter a complete Pakistani mobile number, for example 0300 123 4567.</div>`;
   } else if (m.searched && matches.length === 1) {
     const match = matches[0];
-    result = `<div class="notice notice-success">Profile found. Confirm the masked number to continue.</div><div class="list"><button class="service-option" data-action="select-customer" data-customer-id="${match.id}"><span><strong>Continue as ${htmlesc(match.name)}</strong><small>${maskPakistaniMobile(match.phone)} · Ayan salon profile</small></span><span class="service-price">Continue</span></button></div>`;
+    result = `<div class="notice notice-success">Profile found. Confirm the masked number to continue.</div><div class="list"><button class="service-option" data-action="select-customer" data-customer-id="${match.id}"><span><strong>Continue as ${htmlesc(match.name)}</strong><small>${maskPakistaniMobile(match.phone)} · Salon profile</small></span><span class="service-price">Continue</span></button></div>`;
   } else if (m.searched && matches.length > 1) {
     // Duplicate phone data should never expose a list or allow an ambiguous sign-in.
     result = `<div class="notice notice-warning">This mobile is linked to more than one profile. Please ask the salon owner to correct the records.</div>`;

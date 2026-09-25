@@ -41,8 +41,13 @@ public final class ApiDtos {
                                   boolean marketingConsent) {}
     public record CustomerProfileRequest(@NotBlank @Size(max = 120) String name,
                                          boolean marketingConsent) {}
-    /** A 4 to 6 digit sign-in PIN. The current PIN is required only when one already exists. */
-    public record PinRequest(@NotBlank @Pattern(regexp = "\\d{4,6}") String pin, String currentPin) {}
+    /**
+     * A 4 to 6 digit sign-in PIN, or the 10-20 character owner password that
+     * the same salted-digest routine accepts. The current secret is required
+     * only when one already exists.
+     */
+    public record PinRequest(@NotBlank @Pattern(regexp = "(\\d{4,6})|([A-Za-z0-9@#$%^&*!._+\\-]{10,20})") String pin,
+                             String currentPin) {}
     public record ServiceRequest(@NotBlank String name, @PositiveOrZero long priceMinor, @Positive int durationMinutes, String category, boolean active) {
         public ServiceRequest(String name, long priceMinor, int durationMinutes, String category) {
             this(name, priceMinor, durationMinutes, category, true);
