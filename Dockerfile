@@ -21,5 +21,6 @@ WORKDIR /app
 COPY --from=build /src/server/target/ayan-salon-server-0.1.0-SNAPSHOT.jar app.jar
 USER salon
 EXPOSE 8080
-ENV SERVER_PORT=8080
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+# A cloud host hands the port in $PORT (Render) or $SERVER_PORT; on the salon
+# laptop the app keeps listening on 8080.
+CMD ["sh", "-c", "exec java -XX:MaxRAMPercentage=75 -Dserver.port=${PORT:-${SERVER_PORT:-8080}} -jar app.jar"]

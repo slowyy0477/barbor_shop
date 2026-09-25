@@ -100,10 +100,16 @@
 
         // 2. The offline Android bundle: start instantly from the last address
         //    that was published for this salon, then refresh it in the
-        //    background. A phone that never finds a server stays offline.
+        //    background. A phone that never finds a server stays offline, and a
+        //    phone the owner deliberately set to offline mode stays offline.
         if (location.protocol === "file:") {
           let cached = "";
-          try { cached = String(localStorage.getItem(DISCOVERED_KEY) || ""); } catch (_) { cached = ""; }
+          let optedOut = false;
+          try {
+            cached = String(localStorage.getItem(DISCOVERED_KEY) || "");
+            optedOut = localStorage.getItem("ayan-api-opt-out") === "1";
+          } catch (_) { cached = ""; optedOut = false; }
+          if (optedOut) return;
           if (cached && cached !== "none") apply(cached);
           publishedConfig().then((found) => {
             const fresh = currentBase();

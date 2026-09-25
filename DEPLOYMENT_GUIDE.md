@@ -11,7 +11,11 @@ If you only want to use the app on your Android phone today:
 3. Open **Ayan Beauty Salon**. A fresh release has no demo customers or money records.
 4. The owner can unlock the private owner workspace with the five-tap salon mark gesture and owner code; customers do not see an Owner menu.
 
+To try the shared version instead, open <https://slowyy0477.github.io/barbor_shop/> on any phone. That address never changes; while the shop laptop is switched on with the salon server running, the page finds it by itself.
+
 You do not need PostgreSQL, GitHub, a payment account, or an SMS provider for this offline pilot. Those accounts are needed only for a shared internet deployment, described later in this guide.
+
+Real sign-in codes are one script away once you have provider credentials: double-click `ops\connect-sms.cmd`. See `docs/SMS-SETUP.md`.
 
 ## First, choose the right mode
 
@@ -131,15 +135,19 @@ Do not publish the repository root unchanged until this check is complete. A fre
 
 ### Free static-host choices
 
-Cloudflare Pages and GitHub Pages can host the static PWA at no charge for small usage. Both provide HTTPS on their default domain. Netlify has a similar free tier. These services host files only; they do not run this Spring process or provide a durable PostgreSQL database. Free bandwidth/build quotas and acceptable-use limits apply.
+This repository is already published at <https://slowyy0477.github.io/barbor_shop/> with GitHub Pages, at no charge. The address never changes. `api.json` in the same folder holds the address of the running salon server, and `ops\publish-salon-address.ps1` updates it automatically every time the free tunnel is opened or refreshed. When the laptop is off the page still loads and says the salon server is not reachable.
+
+Cloudflare Pages and Netlify offer a similar free tier if you ever want a second copy. These services host files only; they do not run this Spring process or provide a durable PostgreSQL database. Free bandwidth/build quotas and acceptable-use limits apply.
+
+For a hosted backend that runs without the laptop (free tiers sleep when idle), see `docs/PERMANENT-HOSTING.md`.
 
 For a beginner, the simplest sequence is:
 
-1. Create a private GitHub repository only if the chosen host supports private repositories on the current plan. Do not commit secrets or signing files.
-2. Connect the repository to Cloudflare Pages (or upload the release-ready static files).
-3. Set the project root to the folder containing index.html. Use no build command for the current plain HTML/CSS/JavaScript app.
-4. Wait for the HTTPS deployment URL and open it in Safari.
-5. In Safari, tap **Share**, choose **Add to Home Screen**, enable **Open as Web App** if shown, then tap **Add**.
+1. Open <https://slowyy0477.github.io/barbor_shop/> in Safari on the iPhone.
+2. Tap **Share**, choose **Add to Home Screen**, enable **Open as Web App** if shown, then tap **Add**.
+3. Keep the shop laptop on with the salon server running while the customer or staff member uses the app.
+
+If you ever publish a different host, keep the release checks above and never commit secrets or signing files.
 
 On iPhone, the installed icon opens in a standalone window. iOS may evict local browser storage when space is low, and background push/SMS behavior depends on the eventual provider integration. A PWA is not a replacement for server backups.
 

@@ -12,6 +12,14 @@ Two ways to use the same app:
    the app sees the same customers, bookings and wallet. No monthly host is
    needed; the laptop is the server.
 
+   Your permanent customer link (never changes):
+   https://slowyy0477.github.io/barbor_shop/
+
+   Open that link on any phone. While the shop laptop is switched on with the
+   salon server running, the page finds the server by itself and shows the
+   shared salon data. When the laptop is off, the link still opens and says
+   that the salon server is not reachable.
+
 
 PART 1 - USE THE APK ON ONE PHONE TODAY
 
@@ -23,6 +31,8 @@ PART 1 - USE THE APK ON ONE PHONE TODAY
    then tap Install and Open.
 4. A fresh install is empty. There are no demo customers or demo money records.
    The installed name starts as the neutral "Salon".
+   If the shop laptop is switched on and running the salon server, the app
+   finds it by itself, so nothing has to be typed in.
 5. Owner > Settings > "Phone app name & logo" saves your salon name and logo on
    that phone. The launch screen shows them from the next start, and Android
    offers a home-screen icon with the same name and logo. Android cannot rename
@@ -90,17 +100,23 @@ One-time setup on the shop laptop:
      - Phone address: an https://...trycloudflare.com link
 3. On every salon phone that should share data:
    - Install the APK and open it.
-   - Tap the AB mark five times, open Owner > Settings.
-   - Paste the printed https link into "Salon server address" and save.
-   - The phone reconnects. Customers now sign in with mobile + PIN on the
-     shared server.
+   - The app looks up the salon address that this laptop publishes for you.
+     Nothing has to be typed.
+   - If a phone still says "Offline app on this phone", tap the AB mark five
+     times, open Owner > Settings, paste the printed link into
+     "Salon server address" and save.
+   - Customers now sign in with mobile + PIN on the shared server.
 4. Stop the server for the day with:
    powershell -ExecutionPolicy Bypass -File .\ops\stop-salon-server.ps1
 
 When a customer signs up for the first time
 
-- There is no SMS provider yet, so the six-digit code is not texted.
-- The code is written on the laptop instead. In a second PowerShell window run:
+- Two choices:
+  a. Real SMS/WhatsApp (needs a paid or trial provider account):
+     double-click ops\connect-sms.cmd once and answer its questions. The
+     customer then receives the code on their own mobile.
+  b. Free, no account: the six-digit code is written on the laptop instead.
+     In a second PowerShell window run:
     powershell -ExecutionPolicy Bypass -File .\ops\show-last-code.ps1
 - Read that code to the customer. It works once and expires in a few minutes.
 - The customer then chooses their own 4 to 6 digit PIN and uses mobile + PIN
@@ -110,9 +126,11 @@ When a customer signs up for the first time
 
 Notes about the free tunnel
 
-- The free address changes each time you restart the server. Paste the new
-  link into each phone's "Salon server address" setting again, or keep the
-  laptop running.
+- The free address changes each time you restart the server, and the laptop
+  publishes the new one automatically. The permanent link above and the phone
+  apps follow it, so in normal use there is nothing to copy by hand.
+- The customers' permanent link is https://slowyy0477.github.io/barbor_shop/ .
+  It is free and it does not change.
 - If the free internet link is unavailable (it depends on Cloudflare, not on
   your laptop), phones on the same Wi-Fi can use the "Same Wi-Fi" address that
   Check Salon Server prints. Double-click ops\refresh-public-url.cmd to try the
@@ -126,15 +144,17 @@ IMPORTANT BEFORE SHARING WITH MANY CUSTOMERS
 
 - The single-phone APK stores each phone's data separately. Shared balances and
   bookings need Part 2 (the laptop server).
-- Real SMS one-time codes, card payments and payouts still need owner accounts
-  with a provider. The laptop server uses mobile + PIN instead of SMS, and
-  manual owner-approved deposits.
+- Real SMS one-time codes need one free or paid provider account
+  (ops\connect-sms.cmd sets it up in a minute); without it the laptop shows
+  each code on screen for the owner to read. Card payments and bank payouts
+  still need owner accounts with those providers. Deposits are approved by the
+  owner by hand.
 - Free services have limits. A laptop server is free but only runs while the
   laptop is on.
 
 Current APK checksum (SHA-256)
 
-0807921B79C41296436C979536280C093A49179BEE21361991826488AAE1A9A2
+DBD43F0BD989103ECC1A409ADC87A2709DFC4483B726C466AB9A3579FB25FA54
 
 Do not share the release keystore, signing properties, database password,
 provider token or OTP code in chat.

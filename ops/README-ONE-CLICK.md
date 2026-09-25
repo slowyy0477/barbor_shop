@@ -23,6 +23,27 @@ On your **Desktop** and in the **Start Menu** (folder *Ayan Salon*):
 
 And from now on the server also starts **by itself** every time you sign in to Windows, so most days you do nothing at all.
 
+## 2b. Your permanent online link
+
+Share this address with customers. It never changes:
+
+    https://slowyy0477.github.io/barbor_shop/
+
+It works like this:
+
+- GitHub serves the app page itself, so the link always opens, even when the
+  laptop is off (it then says the salon server is not reachable).
+- Every time the laptop opens its free phone link, the new address is published
+  to the same GitHub repository (`api.json`), so the permanent link always knows
+  where the salon is while the laptop is switched on.
+- The link is free. Nothing to renew, nothing to pay.
+- For a customer to send money or receive a code, the laptop must be on and
+  connected, exactly like the "Phone address" in section 4.
+
+The phone app (APK) uses the same published address automatically. If a salon
+phone still shows "Offline app on this phone", open **Owner > Settings** and
+press **Save & reconnect** once.
+
 ## 3. Daily routine
 
 1. Turn the laptop on and sign in to Windows.
@@ -52,6 +73,26 @@ If the salon is always on the same Wi-Fi, you can also use the **Same Wi-Fi** ad
 | Check shows **Database : OFF** | Double-click **Start Salon Server** - it turns the database on too. |
 | Phone cannot reach the salon | Run **Check Salon Server**, copy the new **Phone address** into the phone again. |
 | The laptop sleeps and phones stop working | Keep the laptop plugged in. The one-click setup already stops it sleeping on mains power. |
+
+## 5b. Real sign-in codes by SMS or WhatsApp
+
+Out of the box there is no SMS bill, so the code is written to
+`ops\salon-sign-in-codes.log` on this laptop and the owner reads it to the
+customer. To send the code straight to the customer's mobile:
+
+1. Create an account with one provider (Twilio and WhatsApp both work with
+   Pakistani numbers; your own SMS gateway can be used too).
+2. Double-click `ops\connect-sms.cmd`.
+3. Answer the four questions. The script saves the credentials privately, then
+   restarts the salon server and sends one test message.
+
+Nothing else changes: the same screen, the same code, but it arrives as a real
+message. If the provider ever fails, the code is still written to the log on the
+laptop so a customer at the counter is never stuck.
+
+The credentials live only in `ops\salon-server.local.json` on this machine and
+are never uploaded to GitHub. To go back to the free on-machine codes, run
+`ops\connect-sms.cmd` again and choose **0**.
 
 ## 6. Turn the automatic start off again
 

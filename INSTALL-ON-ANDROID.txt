@@ -11,6 +11,8 @@ Ayan Beauty Salon - Easy Android Installation
 
 4. Open the app. A fresh install has no demo customers or demo money records.
    The installed name is the neutral "Salon" until step 10 is done.
+   If the shop laptop is switched on with the salon server running, the app
+   finds that server by itself. Nothing has to be typed in.
 
 5. Customers sign in with their Pakistani mobile number and their own 4 to 6
    digit PIN. A new customer creates the PIN while making the profile. Five
@@ -29,8 +31,11 @@ Ayan Beauty Salon - Easy Android Installation
    and can tap a photo to open the full look.
 
 9. To share one set of customers, bookings and wallet between several phones,
-   run the laptop server and paste its https address into Owner > Settings >
-   Salon server address. See START-HERE.txt, Part 2.
+   run the laptop server (START-HERE.txt, Part 2). The phone finds the published
+   address automatically; if a phone still says "Offline app on this phone",
+   paste the laptop's https address into Owner > Settings > Salon server
+   address and save. Customers can also simply open the permanent link
+   https://slowyy0477.github.io/barbor_shop/ in any browser.
 
 10. Owner > Settings > "Phone app name & logo" saves your salon name and logo
     on this phone. The launch screen shows them from the next start, and
@@ -39,7 +44,7 @@ Ayan Beauty Salon - Easy Android Installation
     phones.
 
 APK verification:
-- SHA-256: 0807921B79C41296436C979536280C093A49179BEE21361991826488AAE1A9A2
+- SHA-256: DBD43F0BD989103ECC1A409ADC87A2709DFC4483B726C466AB9A3579FB25FA54
 - Package: com.cornerchair.salon
 - Version: 1.0.0
 
@@ -48,6 +53,6 @@ Important:
   data is not shared between phones and it is not the source of truth for real
   money.
 - The shared version keeps customer, booking and wallet data on the laptop
-  server. Real SMS codes, card payments and payouts still need provider
-  accounts later.
+  server. Real SMS codes need one provider account (ops\connect-sms.cmd);
+  card payments and payouts still need provider accounts later.
 - Keep the release signing key private. It is required for future updates.

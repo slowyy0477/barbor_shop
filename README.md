@@ -4,6 +4,17 @@ A mobile-first, working salon operations app based on the attached **Salon App B
 
 ## Run it
 
+**Live now:** <https://slowyy0477.github.io/barbor_shop/> - the permanent customer link. It is served free by GitHub Pages and finds the shop laptop's salon server by itself while the laptop is switched on (the address is republished to `api.json` on every restart).
+
+To run the shop laptop server, database and free phone tunnel, use the one-click scripts:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\ops\install-one-click-start.ps1   # once
+powershell -ExecutionPolicy Bypass -File .\ops\start-salon-server.ps1
+```
+
+Real sign-in codes by SMS/WhatsApp: double-click `ops\connect-sms.cmd` (details in [docs/SMS-SETUP.md](docs/SMS-SETUP.md)). Everything else is unchanged.
+
 From this folder:
 
 ```powershell
