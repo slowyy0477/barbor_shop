@@ -1,4 +1,4 @@
-Ayan Beauty Salon - Start Here
+Salon App - Start Here
 
 WHAT YOU HAVE
 
@@ -53,8 +53,10 @@ Owner sign-in on the phone (offline mode)
 
 1. Tap the salon mark (the round logo at the top) five times quickly.
 2. With the laptop server running, type the owner mobile number and the owner
-   password. The password is printed by ops\start-salon-server.ps1 and can be
-   changed any time with ops\set-owner-password.cmd.
+   password. The mobile number can be left empty when you type the password.
+   Double-click ops\show-owner-password.cmd to read the password again, and
+   ops\set-owner-password.cmd to change it (10 to 20 characters, with at least
+   one letter and one digit).
    Without a server, the offline owner code is 530146 - change it immediately
    in Owner > Settings.
 3. Lock the owner workspace when finished.
@@ -78,16 +80,22 @@ PART 2 - MAKE THE LAPTOP THE SALON SERVER (FREE)
 
 Easiest way - let the laptop do it by itself
 
-1. Open E:\Barbar-Shop\ops and right-click install-one-click-start.ps1,
-   then choose "Run with PowerShell" and click Yes if Windows asks.
-2. That is the only setup step. From then on the salon server starts by
-   itself whenever you sign in to Windows, and the laptop stops going to
-   sleep while it is serving.
-3. On the Desktop you now have three shortcuts:
-     Start Salon Server   - turn everything on by hand any time
-     Check Salon Server   - one screen: database, server, phone address
-     Stop Salon Server    - turn it off at the end of the day
-4. Beginners: double-click "Check Salon Server" whenever you are unsure.
+1. Setup is already done on the shop laptop. Nothing has to be installed again.
+   The salon server starts by itself every time you sign in to Windows, and the
+   laptop stops going to sleep while it is serving.
+2. You have three shortcuts on the Desktop (and the same files in
+   E:\Barbar-Shop):
+     1 START Salon   - turn everything on by hand any time
+                       (file: 1 START SALON.cmd)
+     2 STOP Salon    - turn the server and the phone link off
+                       (file: 2 STOP SALON.cmd)
+     3 CHECK Salon   - one screen: database, server, phone address
+                       (file: 3 CHECK SALON.cmd)
+3. Most days you do nothing: switch the laptop on, sign in to Windows, and the
+   black window starts and closes by itself.
+4. If "1 START Salon" is double-clicked while everything is already running it
+   simply says "ALREADY ON" and changes nothing.
+5. Beginners: double-click "3 CHECK Salon" whenever you are unsure.
    Full guide: ops\README-ONE-CLICK.md
 
 Manual way (if you prefer typing)
