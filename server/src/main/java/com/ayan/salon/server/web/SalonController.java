@@ -3,6 +3,7 @@ package com.ayan.salon.server.web;
 import com.ayan.salon.server.domain.*;
 import com.ayan.salon.server.service.*;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 import java.util.List;
@@ -12,8 +13,15 @@ import java.util.List;
 public class SalonController {
     private final SalonService salonService;
     private final BookingService bookingService;
+    private final AuthService authService;
     private final AuthenticatedActorResolver actors;
-    public SalonController(SalonService salonService, BookingService bookingService, AuthenticatedActorResolver actors) { this.salonService = salonService; this.bookingService = bookingService; this.actors = actors; }
+    public SalonController(SalonService salonService, BookingService bookingService, AuthService authService,
+                           AuthenticatedActorResolver actors) {
+        this.salonService = salonService;
+        this.bookingService = bookingService;
+        this.authService = authService;
+        this.actors = actors;
+    }
 
     @PutMapping("/settings")
     public SalonSettings updateSettings(@PathVariable UUID salonId, @Valid @RequestBody ApiDtos.SettingsRequest request) {
@@ -37,6 +45,20 @@ public class SalonController {
                                    @Valid @RequestBody ApiDtos.CustomerRequest request) {
         ActorContext actor = actors.require(); actor.requireSalon(salonId);
         return salonService.updateCustomer(actor, salonId, customerId, request.name(), request.phone(), request.marketingConsent());
+    }
+    /**
+     * Sets a new password for one customer. No SMS code exists any more, so this
+     * owner action is the only recovery path for a customer who forgot it.
+     */
+    @PostMapping("/customers/{customerId}/password-reset")
+    public ResponseEntity<Void> resetCustomerPassword(@PathVariable UUID salonId, @PathVariable UUID customerId,
+                                                      @Valid @RequestBody ApiDtos.PasswordResetRequest request) {
+        ActorContext actor = actors.require(); actor.requireSalon(salonId);
+        if (actor.role() != DomainTypes.ActorRole.OWNER && !actor.has("manage_customers")) {
+            throw new ActorContext.AuthorizationException("Only the salon owner can set a customer password");
+        }
+        authService.resetCustomerPassword(salonId, customerId, request.password());
+        return ResponseEntity.noContent().build();
     }
     @PostMapping("/services")
     public ServiceOffering createService(@PathVariable UUID salonId, @Valid @RequestBody ApiDtos.ServiceRequest request) { ActorContext actor = actors.require(); actor.requireSalon(salonId); return salonService.createService(actor, salonId, request.name(), request.priceMinor(), request.durationMinutes(), request.category()); }

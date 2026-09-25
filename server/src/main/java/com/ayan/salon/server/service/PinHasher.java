@@ -9,9 +9,14 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 
 /**
- * PBKDF2-HMAC-SHA256 helper for customer sign-in PINs. The digest is salted per
- * account and compared in constant time so a wrong PIN cannot be narrowed down
- * by response timing.
+ * PBKDF2-HMAC-SHA256 helper for salon sign-in passwords. The digest is salted
+ * per account and compared in constant time so a wrong password cannot be
+ * narrowed down by response timing.
+ *
+ * <p>The salon switched off SMS verification codes, so every account is
+ * protected by a real password: 10 to 20 characters with at least one letter
+ * and one digit. The short 4 to 6 digit PIN shape is only kept so digests
+ * written by older builds can still be verified and then replaced.
  */
 final class PinHasher {
     static final int DEFAULT_ITERATIONS = 120_000;
@@ -30,15 +35,13 @@ final class PinHasher {
             java.util.regex.Pattern.compile("[A-Za-z0-9@#$%^&*!._+-]{10,20}");
 
     /**
-     * An account secret is either the short customer PIN (4-6 digits) or the
-     * longer owner password (10-20 characters). The salon owner asked for a real
-     * password instead of a short keypad PIN, so both shapes are accepted and
-     * hashed with the same salted PBKDF2 routine.
+     * The only shape a new account, or a password change, may use. A password
+     * must mix letters and digits so a mistyped phone number can never be
+     * accepted as somebody's password.
      */
-    static boolean validSecret(String secret) {
+    static boolean validPassword(String secret) {
         if (secret == null) return false;
         String value = secret.trim();
-        if (validPin(value)) return true;
         if (!PASSWORD.matcher(value).matches()) return false;
         boolean hasLetter = false;
         boolean hasDigit = false;
@@ -47,10 +50,21 @@ final class PinHasher {
             if (Character.isLetter(character)) hasLetter = true;
             if (Character.isDigit(character)) hasDigit = true;
         }
-        // A password must not be only letters or only digits, otherwise a
-        // mistyped phone number could be accepted as a password.
         return hasLetter && hasDigit;
     }
+
+    /**
+     * Verification-only shape. Passwords are the supported secret; a legacy
+     * short PIN digest is still accepted when comparing so an account created
+     * by an older build is never locked out permanently.
+     */
+    static boolean validSecret(String secret) {
+        return validPassword(secret) || validPin(secret);
+    }
+
+    /** Human readable rule used by every rejection message. */
+    static final String PASSWORD_RULE =
+            "Choose a password of 10 to 20 characters that contains at least one letter and one number";
 
     static String newSalt() {
         byte[] salt = new byte[SALT_BYTES];
@@ -60,7 +74,7 @@ final class PinHasher {
 
     static String hash(String pin, String salt, int iterations) {
         if (!validSecret(pin)) {
-            throw new IllegalArgumentException("Choose a 4 to 6 digit PIN or a 10 to 20 character password");
+            throw new IllegalArgumentException(PASSWORD_RULE);
         }
         char[] characters = pin.trim().toCharArray();
         PBEKeySpec spec = new PBEKeySpec(characters, decodeSalt(salt), iterations, KEY_BITS);

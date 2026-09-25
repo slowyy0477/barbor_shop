@@ -44,7 +44,7 @@ one (Cloudflare first, then serveo, then Tunnelmole) and publishes the new
 address. Phones pick it up by themselves within a few minutes, so there is
 nothing to do by hand.
 
-Only if auto-find ever fails: open the app, tap the **AB** mark 5 times, sign in
+Only if auto-find ever fails: open the app, tap the round salon mark 5 times, sign in
 as owner, and use **Owner > Settings > Salon server address**. Paste the address
 shown by `ops\status-salon-server.cmd` on the laptop. Only `https://` addresses
 are accepted.
@@ -53,30 +53,65 @@ are accepted.
 
 The owner menu is hidden on purpose:
 
-1. Tap the **AB** logo 5 times quickly.
-2. Sign in. Online: mobile **03007654321**, PIN **246813**.
-   Offline (no internet): code **530146**.
-3. Five wrong tries lock the owner sign-in for 15 minutes.
+1. Tap the round salon logo at the top of the app 5 times quickly.
+2. Tap **Owner**.
+3. Type your owner mobile number and your owner password. Tap **Sign in**.
 
-Please change the PIN later from the owner settings so only you know it.
+The owner password lives on the shop laptop only. To see it or change it, double
+click one of these on the laptop:
 
-## 5. Customer sign-in codes
+    E:\Barbar-Shop\ops\show-owner-password.cmd    (shows it)
+    E:\Barbar-Shop\ops\set-owner-password.cmd     (changes it)
 
-Right now (free mode): when a customer asks for a code, the shop laptop saves it
-for 5 minutes. Read it out to the customer with the shortcut
-`ops\show-last-code.cmd` on the laptop. Codes work once and then expire.
+Five wrong tries pause the owner sign in for 15 minutes. Use a password of at
+least 10 characters for your own safety.
 
-Later (real SMS): real messages to any mobile number need a paid provider
-account - Twilio, Meta WhatsApp Cloud API, or a Pakistani bulk SMS gateway. The
-server already supports all three:
+Customers can never see this menu. Only the owner password opens it, and the
+server refuses owner data for customer accounts even if someone finds the button.
 
-1. On the laptop, double-click `ops\connect-sms.cmd`.
-2. Answer its questions with your provider keys. They are saved privately in
-   `ops\salon-server.local.json`, which is never uploaded to GitHub.
-3. It restarts the server and can send one test message.
+## 5. Customer sign up and sign in (mobile number + password)
 
-If the provider ever fails, the free laptop code is still written, so a customer
-at the counter is never stuck. Full details: `docs\SMS-SETUP.md`.
+There is no SMS code anywhere in this app. Customers use a mobile number and a
+password only.
+
+New customer, first time:
+
+1. Open the app and tap **Sign in**.
+2. Tap **Create new account**.
+3. Type name, mobile number, password, then the same password again.
+4. Tick the box that allows promotional messages (optional, but the customer
+   must tick it before any offer message can be sent).
+5. Tap **Create account**. The customer is signed in straight away.
+
+The password rule, tell the customer this:
+
+- at least 10 characters and at most 20
+- must have at least one letter and at least one number
+- example: `SalonPass2026`
+
+Because there is no SMS code, the password cannot be recovered by message. Tell
+the customer to remember it.
+
+Coming back later:
+
+1. Tap **Sign in**.
+2. Type the same mobile number and password.
+3. Tap **Sign in**. The app keeps them signed in on that phone, so they normally
+   do not type it again.
+
+Customer forgot the password? You fix it as the owner: open **Owner > Customers**,
+find the customer, tap **Reset password**, set a new one, then tell the customer
+the new password. They can change it later from **More**.
+
+Limits on new accounts:
+
+- ONE new account per phone. A second account on the same phone is refused.
+- THREE new accounts per internet connection. A fourth is refused.
+- Change both numbers any time in `E:\Barbar-Shop\ops\salon-server.local.json`
+  using `MaxAccountsPerDevice` and `MaxAccountsPerIp`. Set one to 0 to switch
+  that limit off.
+- If a family shares one phone, set `MaxAccountsPerDevice` to 2 or 3 first,
+  otherwise the second family member is refused.
 
 ## 6. Two ways to run the salon
 

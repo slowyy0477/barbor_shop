@@ -554,9 +554,17 @@ $env:AYAN_OTP_INBOX_PATH = Join-Path $opsDir "salon-sign-in-codes.log"
 $env:AYAN_AUTH_OWNER_SALON_ID = $SalonId
 $env:AYAN_AUTH_OWNER_PHONE = $ownerPhone
 $env:AYAN_AUTH_OWNER_PIN = $settings.OwnerPin
-# "null" is the origin a browser sends for the offline Android bundle; the
-# GitHub Pages address is the permanent public link for customers.
-$env:AYAN_WEB_ALLOWED_ORIGINS = "http://localhost:$Port,null,https://slowyy0477.github.io"
+# Every origin is allowed because this API authenticates with a bearer token and
+# never with a cookie. A fixed list is what used to break the installed APK: its
+# bundled page is served from file:///android_asset and sends "Origin: file://",
+# which Spring rejected with an empty 403 the app showed as "Request Failed
+# (403)". The free tunnel also mints a new hostname on every restart. Set this
+# to a comma separated list to narrow it once the salon owns a fixed domain.
+$env:AYAN_WEB_ALLOWED_ORIGINS = "*"
+# Customers and the owner sign in with a mobile number and a strong password.
+# Account creation is capped per phone and per internet address (0 = no cap).
+$env:AYAN_SIGNUP_MAX_PER_DEVICE = if ($settings.PSObject.Properties["MaxAccountsPerDevice"]) { "$($settings.MaxAccountsPerDevice)".Trim() } else { "1" }
+$env:AYAN_SIGNUP_MAX_PER_NETWORK = if ($settings.PSObject.Properties["MaxAccountsPerIp"]) { "$($settings.MaxAccountsPerIp)".Trim() } else { "3" }
 # Real sign-in codes. When these are empty the server keeps writing the code to
 # ops\salon-sign-in-codes.log so the owner can read it to the customer.
 $env:AYAN_SMS_PROVIDER = [string]$settings.SmsProvider
@@ -786,22 +794,20 @@ elseif ($lanAddress) {
     Write-Host "                   Phones on the salon Wi-Fi can use the address above."
 }
 if ($keepAwakeProcess) { Write-Host "  Stay awake     : ON (this laptop will not sleep while the salon is serving)" }
-if ($settings.SmsProvider) {
-    Write-Host "  Sign-in codes  : real $($settings.SmsProvider) messages sent to the customer's mobile"
-} else {
-    Write-Host "  Sign-in codes  : written on this laptop to ops\salon-sign-in-codes.log"
-    Write-Host "                   Connect a real SMS provider any time: ops\connect-sms.cmd"
-}
+Write-Host "  Sign-in        : mobile number + password (no SMS codes are used)"
+Write-Host "                   New accounts allowed per phone: $($env:AYAN_SIGNUP_MAX_PER_DEVICE) (0 = unlimited)"
+Write-Host "                   New accounts allowed per internet address: $($env:AYAN_SIGNUP_MAX_PER_NETWORK) (0 = unlimited)"
 Write-Host ""
 Write-Host "On each salon phone: open the app, tap the salon mark five times, open Owner > Settings,"
 Write-Host "and paste the phone address above into 'Salon server address', then save."
 if ($ownerPhone) {
-    Write-Host "Owner sign-in: mobile $ownerPhone with the owner password or PIN stored on this laptop."
+    Write-Host "Owner sign-in: the owner password alone, or mobile $ownerPhone with that password."
 } else {
-    Write-Host "Owner sign-in: rerun with -OwnerPhone 03xxxxxxxxx to register the owner mobile."
+    Write-Host "Owner sign-in: the owner password alone."
 }
-Write-Host "The owner password or PIN stored on this laptop is: $($settings.OwnerPin)"
-Write-Host "Change it any time: ops\set-owner-password.cmd  (or rerun this script with -OwnerPin ...)."
-Write-Host "Read the newest customer sign-in code: ops\show-last-code.cmd"
+Write-Host "See the owner password : ops\show-owner-password.cmd"
+Write-Host "Change it any time     : ops\set-owner-password.cmd"
+# The password is deliberately never echoed here: this window's text is easy to
+# photograph or screen-share, and the owner already has a helper that shows it.
 Write-Host "Keep this window's laptop awake while the salon is open. Stop the server with:"
 Write-Host "  powershell -ExecutionPolicy Bypass -File .\ops\stop-salon-server.ps1"

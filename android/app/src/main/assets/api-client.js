@@ -23,6 +23,50 @@
   }
   const TOKEN_KEY = "ayan-session-token";
   const SESSION_KEY = "ayan-session-meta";
+  /**
+   * Stable per-install key. The server hashes it so one phone can create only
+   * one customer account, and it never stores the raw value. localStorage is
+   * tried first, then sessionStorage, and a value that cannot be persisted at
+   * all still stays constant for this page load instead of blocking sign-up.
+   */
+  const DEVICE_KEY = "ayan-device-id";
+  const DEVICE_PATTERN = /^[A-Za-z0-9_-]{8,80}$/;
+  let deviceKeyCache = "";
+
+  function randomDeviceKey() {
+    try {
+      if (global.crypto && typeof global.crypto.randomUUID === "function") return global.crypto.randomUUID();
+    } catch (_) { /* fall through to the manual generator */ }
+    const bytes = new Uint8Array(16);
+    let filled = false;
+    try { if (global.crypto && global.crypto.getRandomValues) { global.crypto.getRandomValues(bytes); filled = true; } } catch (_) { filled = false; }
+    if (!filled) for (let index = 0; index < bytes.length; index++) bytes[index] = Math.floor(Math.random() * 256);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    let out = "";
+    for (let index = 0; index < bytes.length; index++) {
+      out += bytes[index].toString(16).padStart(2, "0");
+      if (index === 3 || index === 5 || index === 7 || index === 9) out += "-";
+    }
+    return out;
+  }
+
+  function deviceId() {
+    if (deviceKeyCache) return deviceKeyCache;
+    for (const store of [() => global.localStorage, () => global.sessionStorage]) {
+      try {
+        const storage = store();
+        if (!storage) continue;
+        const stored = storage.getItem(DEVICE_KEY);
+        if (stored && DEVICE_PATTERN.test(stored)) { deviceKeyCache = stored; return stored; }
+      } catch (_) { /* private mode may deny storage */ }
+    }
+    const created = randomDeviceKey();
+    deviceKeyCache = created;
+    try { global.localStorage?.setItem(DEVICE_KEY, created); } catch (_) { /* ignore */ }
+    try { global.sessionStorage?.setItem(DEVICE_KEY, created); } catch (_) { /* ignore */ }
+    return created;
+  }
 
   function enabled() {
     const base = config().base;
@@ -55,6 +99,9 @@
     // JSON remains the default for all other API mutations.
     const isForm = typeof FormData !== "undefined" && options.body instanceof FormData;
     if (options.body !== undefined && !isForm) headers.set("Content-Type", "application/json");
+    // Only the authentication routes need the device key, and sending it there
+    // keeps every other request a plain single round trip.
+    if (path.startsWith("/api/auth/")) headers.set("X-Device-Id", deviceId());
     const bearer = token(); if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
     const response = await fetch(`${base}${path}`, { ...options, headers, credentials: "omit" });
     let payload = null; try { payload = await response.json(); } catch (_) { /* empty response */ }
@@ -64,21 +111,30 @@
     }
     return payload;
   }
-  async function requestOtp(phone, targetSalonId) {
-    return request("/api/auth/otp/request", { method: "POST", body: JSON.stringify({ salonId: id(targetSalonId), phone }) });
-  }
-  async function verifyOtp(challengeId, code, targetSalonId) {
-    const value = await request("/api/auth/otp/verify", { method: "POST", body: JSON.stringify({ salonId: id(targetSalonId), challengeId, code }) });
-    setSession(value); return value;
-  }
-  /** Registration with an optional PIN; an empty PIN leaves code-only sign-in. */
-  async function registerCustomer(challengeId, code, phone, name, marketingConsent, targetSalonId, pin) {
-    const value = await request("/api/auth/customer/register", { method: "POST", body: JSON.stringify({ salonId: id(targetSalonId), challengeId, code, phone, name, marketingConsent, pin: pin || null }) });
+  /**
+   * SMS verification codes are retired. These three stay in the public surface
+   * so an old cached page fails with a plain explanation instead of a confusing
+   * network error, but they never call the server.
+   */
+  const SMS_RETIRED = "SMS codes are switched off. Please update the app and sign in with your mobile number and password.";
+  async function requestOtp() { throw new Error(SMS_RETIRED); }
+  async function verifyOtp() { throw new Error(SMS_RETIRED); }
+  async function registerCustomer() { throw new Error(SMS_RETIRED); }
+  /**
+   * Creates the customer account from the mobile number and the chosen
+   * password. No verification code is involved, so the server needs the device
+   * key to keep one phone to one account.
+   */
+  async function signupCustomer(phone, name, password, marketingConsent, targetSalonId) {
+    const value = await request("/api/auth/customer/signup", {
+      method: "POST",
+      body: JSON.stringify({ salonId: id(targetSalonId), phone, name, password, marketingConsent: marketingConsent === true })
+    });
     setSession(value); return value;
   }
   /**
-   * PIN sign-in. The verification code endpoint stays available as recovery, so
-   * a forgotten PIN is never a permanent lockout.
+   * Mobile number plus password sign-in. The salon owner resets a forgotten
+   * password from the Owner workspace, because no SMS code can be sent.
    */
   async function verifyPin(phone, pin, targetSalonId) {
     const value = await request("/api/auth/pin/verify", { method: "POST", body: JSON.stringify({ salonId: id(targetSalonId), phone, pin }) });
@@ -184,7 +240,13 @@
   async function ownerArchiveHaircutStyle(styleId, targetSalonId) {
     return ownerMutation(`/api/salons/${encodeURIComponent(id(targetSalonId))}/haircut-styles/${encodeURIComponent(styleId)}`, "DELETE", undefined, "haircut-style-archive");
   }
-  const api = { enabled, token, metadata, setSession, clearSession, request, resolveUrl, uploadMedia, requestOtp, verifyOtp, registerCustomer, verifyPin, setPin, logout, publicCatalog, me, updateProfile, wallet, walletTransactions, bookings, reminders, paymentMethods, staff, settings, services, haircutStyles, createBooking, submitDeposit, addOns, ownerOverview, ownerMutation, ownerBookingStatus, ownerCompleteBooking, ownerReviewDeposit, ownerReviewWithdrawal, ownerUpdatePaymentMethod, ownerUpdateBranding, ownerSaveHaircutStyle, ownerArchiveHaircutStyle, makeKey };
+  async function resetCustomerPassword(customerId, password, targetSalonId) {
+    const value = await request(`/api/salons/${encodeURIComponent(id(targetSalonId))}/customers/${encodeURIComponent(customerId)}/password-reset`, {
+      method: "POST", body: JSON.stringify({ password })
+    });
+    return value;
+  }
+  const api = { enabled, token, metadata, setSession, clearSession, request, resolveUrl, uploadMedia, deviceId, requestOtp, verifyOtp, registerCustomer, signupCustomer, verifyPin, setPin, resetCustomerPassword, logout, publicCatalog, me, updateProfile, wallet, walletTransactions, bookings, reminders, paymentMethods, staff, settings, services, haircutStyles, createBooking, submitDeposit, addOns, ownerOverview, ownerMutation, ownerBookingStatus, ownerCompleteBooking, ownerReviewDeposit, ownerReviewWithdrawal, ownerUpdatePaymentMethod, ownerUpdateBranding, ownerSaveHaircutStyle, ownerArchiveHaircutStyle, makeKey };
   Object.defineProperties(api, {
     configured: { enumerable: true, get: () => config().base },
     salonId: { enumerable: true, get: () => config().salon }

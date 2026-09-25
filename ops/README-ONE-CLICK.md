@@ -47,7 +47,7 @@ It works like this:
   to the same GitHub repository (`api.json`), so the permanent link always knows
   where the salon is while the laptop is switched on.
 - The link is free. Nothing to renew, nothing to pay.
-- For a customer to send money or receive a code, the laptop must be on and
+- For a customer to sign in, book or send money, the laptop must be on and
   connected, exactly like the "Phone address" in section 4.
 
 The phone app (APK) uses the same published address automatically. If a salon
@@ -84,25 +84,29 @@ If the salon is always on the same Wi-Fi, you can also use the **Same Wi-Fi** ad
 | Phone cannot reach the salon | Run **3 CHECK Salon**, copy the new **Phone address** into the phone again. |
 | The laptop sleeps and phones stop working | Keep the laptop plugged in. The one-click setup already stops it sleeping on mains power. |
 
-## 5b. Real sign-in codes by SMS or WhatsApp
+## 5b. How people sign in (no SMS, no codes)
 
-Out of the box there is no SMS bill, so the code is written to
-`ops\salon-sign-in-codes.log` on this laptop and the owner reads it to the
-customer. To send the code straight to the customer's mobile:
+Customers and the owner use a mobile number and a password. Nothing is sent to
+any phone, so there is no message bill and nothing to read out at the counter.
 
-1. Create an account with one provider (Twilio and WhatsApp both work with
-   Pakistani numbers; your own SMS gateway can be used too).
-2. Double-click `ops\connect-sms.cmd`.
-3. Answer the four questions. The script saves the credentials privately, then
-   restarts the salon server and sends one test message.
+- New customer: **Sign in > Create new account**, then name, mobile number and
+  a password twice. Password rule: 10 to 20 characters with at least one letter
+  and one number, for example `SalonPass2026`.
+- Coming back: the same mobile number and password. The phone stays signed in.
+- Owner: tap the round salon logo 5 times, tap **Owner**, then type the owner
+  mobile number and the owner password.
+- Forgot a customer password? Owner > Customers > **Reset password**.
 
-Nothing else changes: the same screen, the same code, but it arrives as a real
-message. If the provider ever fails, the code is still written to the log on the
-laptop so a customer at the counter is never stuck.
+New accounts are limited so one person cannot fill the books:
 
-The credentials live only in `ops\salon-server.local.json` on this machine and
-are never uploaded to GitHub. To go back to the free on-machine codes, run
-`ops\connect-sms.cmd` again and choose **0**.
+- **ONE** new account per phone.
+- **THREE** new accounts per internet connection.
+- Change both in `ops\salon-server.local.json`: `MaxAccountsPerDevice` and
+  `MaxAccountsPerIp`. `0` switches a limit off. If a family shares one phone,
+  set `MaxAccountsPerDevice` to 2 or 3 before they sign up.
+
+The old SMS helper `ops\connect-sms.cmd` and `ops\show-last-code.cmd` are no
+longer part of sign-in. You never need to run them.
 
 ## 6. Turn the automatic start off again
 
@@ -124,8 +128,8 @@ powershell -ExecutionPolicy Bypass -File E:\Barbar-Shop\ops\install-one-click-st
 
 ## 7. Privacy and safety
 
-- `ops\salon-server.local.json` holds the database password and the owner PIN. Never send it to anyone.
+- `ops\salon-server.local.json` holds the database password and the owner password. Never send it to anyone.
 - Owner password helpers: `ops\show-owner-password.cmd` shows it, `ops\set-owner-password.cmd` changes it.
-- Customer sign-in code helper: `ops\show-last-code.cmd` prints the newest code.
+- Customer passwords can only be reset by the owner: Owner > Customers > Reset password.
 - Important files to keep private: `ops\salon-server.local.json`, `ops\power-settings-backup.json`, `android\release-signing.properties`.
 - A backup of the database can be made any time with `ops\backup-postgres.ps1`.

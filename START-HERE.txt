@@ -38,16 +38,28 @@ PART 1 - USE THE APK ON ONE PHONE TODAY
    offers a home-screen icon with the same name and logo. Android cannot rename
    an app that is already installed, so keep that icon on staff phones.
 
-Customer sign-in on the phone
+Customer sign up and sign in on the phone
 
-- A customer enters a complete Pakistani mobile number
+There is no SMS code in this app any more. A mobile number and a password are
+the only things a customer needs.
+
+- New customer: tap Sign in, then Create new account, then type the name, the
+  mobile number and a password twice, tick the promotions box and tap Create
+  account. The customer is signed in straight away.
+- A complete Pakistani mobile number is accepted
   (03xx xxx xxxx, 3xxxxxxxxx, +92xxxxxxxxxx or 0092xxxxxxxxxx).
-- The app then asks for the customer's own 4 to 6 digit PIN. The mobile number
-  alone never opens a profile.
-- New customers create that PIN while making their profile.
-- Five wrong PIN attempts pause sign-in for 15 minutes.
-- Forgot the PIN? The owner opens Owner > Customers, edits that customer and
-  taps Reset sign-in PIN. The customer sets a new PIN at the next sign-in.
+- The password must be 10 to 20 characters and must have at least one letter and
+  at least one number. Example: SalonPass2026.
+- Coming back later: the same mobile number and the same password. The app keeps
+  the customer signed in on that phone, so they normally do not type it again.
+- Five wrong password tries pause sign-in for 15 minutes.
+- Forgot the password? There is no code to resend it. The owner opens
+  Owner > Customers, taps Reset password, sets a new password and tells the
+  customer what it is.
+- Only ONE new account can be made per phone, and only THREE per internet
+  connection. Change that in ops\salon-server.local.json with the keys
+  MaxAccountsPerDevice and MaxAccountsPerIp (0 switches a limit off). A family
+  that shares one phone should set MaxAccountsPerDevice to 2 or 3.
 
 Owner sign-in on the phone (offline mode)
 
@@ -107,7 +119,7 @@ One-time setup on the shop laptop:
    (Replace 03xxxxxxxxx with the owner's own mobile number.)
 2. The script prepares the PostgreSQL database, builds the server, starts it,
    and opens a free https tunnel. It prints:
-     - Owner sign-in: the mobile number and the PIN it generated
+     - Sign-in: mobile number and password (no SMS codes are used)
      - Phone address: an https://...trycloudflare.com link
 3. On every salon phone that should share data:
    - Install the APK and open it.
@@ -116,24 +128,19 @@ One-time setup on the shop laptop:
    - If a phone still says "Offline app on this phone", tap the salon mark five
      times, open Owner > Settings, paste the printed link into
      "Salon server address" and save.
-   - Customers now sign in with mobile + PIN on the shared server.
+   - Customers now sign up and sign in with a mobile number and a password.
 4. Stop the server for the day with:
    powershell -ExecutionPolicy Bypass -File .\ops\stop-salon-server.ps1
 
 When a customer signs up for the first time
 
-- Two choices:
-  a. Real SMS/WhatsApp (needs a paid or trial provider account):
-     double-click ops\connect-sms.cmd once and answer its questions. The
-     customer then receives the code on their own mobile.
-  b. Free, no account: the six-digit code is written on the laptop instead.
-     In a second PowerShell window run:
-    powershell -ExecutionPolicy Bypass -File .\ops\show-last-code.ps1
-- Read that code to the customer. It works once and expires in a few minutes.
-- The customer then chooses their own 4 to 6 digit PIN and uses mobile + PIN
-  every time after that. Codes are only needed again if a PIN is forgotten.
-- After a PIN is forgotten, the owner taps Reset sign-in PIN in Owner >
-  Customers, and the customer asks for one new code to set a fresh PIN.
+- Nothing is sent to the customer's phone. There is no SMS code at all.
+- The customer types their own name, mobile number and password on the phone.
+- The password must be 10 to 20 characters with at least one letter and one
+  number. Tell them to remember it, because no code can be sent to recover it.
+- If they forget it, the owner sets a new password in Owner > Customers.
+- The shortcut ops\show-last-code.cmd still exists from the old SMS days and is
+  no longer part of any sign-in. You never need to run it.
 
 Notes about the free tunnel
 
@@ -160,11 +167,10 @@ IMPORTANT BEFORE SHARING WITH MANY CUSTOMERS
 
 - The single-phone APK stores each phone's data separately. Shared balances and
   bookings need Part 2 (the laptop server).
-- Real SMS one-time codes need one free or paid provider account
-  (ops\connect-sms.cmd sets it up in a minute); without it the laptop shows
-  each code on screen for the owner to read. Card payments and bank payouts
-  still need owner accounts with those providers. Deposits are approved by the
-  owner by hand.
+- Customers and the owner sign in with a mobile number and a password. No SMS
+  provider, no message bill and no code to read out. Card payments and bank
+  payouts still need owner accounts with those providers, and deposits are
+  approved by the owner by hand.
 - Free services have limits. A laptop server is free but only runs while the
   laptop is on.
 

@@ -5,6 +5,7 @@ import com.ayan.salon.server.service.IdempotencyService;
 import com.ayan.salon.server.service.WalletService;
 import com.ayan.salon.server.service.AuthService;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -46,6 +47,23 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ActorContext.AuthorizationException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public Map<String, Object> forbidden(Exception e) { return body("FORBIDDEN", e.getMessage()); }
+    /**
+     * The SMS-code routes are retired. Gone (410) tells an old client that the
+     * endpoint will not come back, instead of a retryable failure.
+     */
+    @ExceptionHandler(AuthController.SmsDisabledException.class)
+    @ResponseStatus(HttpStatus.GONE)
+    public Map<String, Object> smsDisabled(Exception e) { return body("SMS_DISABLED", e.getMessage()); }
+    /**
+     * A unique index rejected the write. The service pre-checks every case it
+     * can, so this is the last line of defence for a simultaneous double submit
+     * such as two taps on "Create account" or the same device signing up twice.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> duplicateWrite(DataIntegrityViolationException e) {
+        return body("CONFLICT", "That record already exists. Please sign in instead of creating it again.");
+    }
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     public Map<String, Object> state(Exception e) { return body("INVALID_STATE", e.getMessage()); }
