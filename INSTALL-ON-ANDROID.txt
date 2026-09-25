@@ -14,9 +14,11 @@ Salon App - Easy Android Installation
    If the shop laptop is switched on with the salon server running, the app
    finds that server by itself. Nothing has to be typed in.
 
-5. Customers sign in with their Pakistani mobile number and their own 4 to 6
-   digit PIN. A new customer creates the PIN while making the profile. Five
-   wrong attempts pause sign-in for 15 minutes.
+5. Customers sign up and sign in with their Pakistani mobile number and their
+   own password of 10 to 20 characters (at least one letter and one number).
+   There is no SMS code anywhere in the app. Five wrong attempts pause sign-in
+   for 15 minutes. One phone can create only one account, and only three new
+   accounts can be created from one internet connection.
 
 6. Customers see Home, Book, Wallet and More. They do not see an Owner menu.
    The owner taps the salon mark (the round logo at the top of the screen) five
@@ -27,8 +29,9 @@ Salon App - Easy Android Installation
    - Offline on one phone: enter the initial code 530146 and change it in
      Owner Settings immediately.
 
-7. Owner > Customers > edit a customer > Reset sign-in PIN clears a forgotten
-   PIN. That customer sets a new PIN at the next sign-in.
+7. Owner > Customers > edit a customer > "Set new password" fixes a forgotten
+   password, because no code can be sent to recover it. Tell the customer the
+   new password; they can change it themselves from More after signing in.
 
 8. Haircut photos: the owner uploads photos under Owner > Services & staff >
    Add haircut style. Customers see them animate in the Haircut styles strip
@@ -48,7 +51,8 @@ Salon App - Easy Android Installation
     phones.
 
 APK verification:
-- SHA-256: a3b946393fa22c7fd373eba1a8e078616ced166488ed7b075a924bdf37f584da
+- File: Salon-App-v1.0.0.apk (219,430 bytes)
+- SHA-256: 3a0f99247e2d1131dce8963d4de71ef191eef0a7b2b7173e0517ae8fd111c1b5
 - Package: com.cornerchair.salon
 - Version: 1.0.0
 
