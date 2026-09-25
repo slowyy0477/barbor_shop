@@ -29,6 +29,16 @@ param(
     [string]$OwnerPhone = "",
     [string]$OwnerPin = "",
     [string]$SalonId = "00000000-0000-0000-0000-000000000001",
+    # Real sign-in codes by SMS/WhatsApp. Empty keeps the free on-machine codes
+    # that the owner reads out at the counter.
+    [string]$SmsProvider = "",
+    [string]$TwilioAccountSid = "",
+    [string]$TwilioAuthToken = "",
+    [string]$TwilioFromNumber = "",
+    [string]$WhatsAppToken = "",
+    [string]$WhatsAppPhoneNumberId = "",
+    [string]$SmsWebhookUrl = "",
+    [string]$SmsWebhookToken = "",
     [switch]$NoTunnel,
     [switch]$SkipBuild,
     # Starting a second copy on the same port always fails, so the default is to
@@ -98,6 +108,23 @@ if (-not $settings.PSObject.Properties["Database"] -or $settings.Database -ne $D
 if (-not $settings.PSObject.Properties["DbUser"] -or $settings.DbUser -ne $DbUser) {
     $settings | Add-Member -NotePropertyName "DbUser" -NotePropertyValue $DbUser -Force
     $changed = $true
+}
+# Provider credentials are only ever stored in this private, ignored file.
+$smsFields = [ordered]@{
+    SmsProvider           = $SmsProvider
+    TwilioAccountSid      = $TwilioAccountSid
+    TwilioAuthToken       = $TwilioAuthToken
+    TwilioFromNumber      = $TwilioFromNumber
+    WhatsAppToken         = $WhatsAppToken
+    WhatsAppPhoneNumberId = $WhatsAppPhoneNumberId
+    SmsWebhookUrl         = $SmsWebhookUrl
+    SmsWebhookToken       = $SmsWebhookToken
+}
+foreach ($field in $smsFields.GetEnumerator()) {
+    if ($field.Value -and $field.Value.Trim()) {
+        $settings | Add-Member -NotePropertyName $field.Key -NotePropertyValue $field.Value.Trim() -Force
+        $changed = $true
+    }
 }
 if ($changed) {
     $settings | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $settingsPath -Encoding UTF8
@@ -514,7 +541,19 @@ $env:AYAN_OTP_INBOX_PATH = Join-Path $opsDir "salon-sign-in-codes.log"
 $env:AYAN_AUTH_OWNER_SALON_ID = $SalonId
 $env:AYAN_AUTH_OWNER_PHONE = $ownerPhone
 $env:AYAN_AUTH_OWNER_PIN = $settings.OwnerPin
-$env:AYAN_WEB_ALLOWED_ORIGINS = "http://localhost:$Port,null"
+# "null" is the origin a browser sends for the offline Android bundle; the
+# GitHub Pages address is the permanent public link for customers.
+$env:AYAN_WEB_ALLOWED_ORIGINS = "http://localhost:$Port,null,https://slowyy0477.github.io"
+# Real sign-in codes. When these are empty the server keeps writing the code to
+# ops\salon-sign-in-codes.log so the owner can read it to the customer.
+$env:AYAN_SMS_PROVIDER = [string]$settings.SmsProvider
+$env:AYAN_TWILIO_ACCOUNT_SID = [string]$settings.TwilioAccountSid
+$env:AYAN_TWILIO_AUTH_TOKEN = [string]$settings.TwilioAuthToken
+$env:AYAN_TWILIO_FROM_NUMBER = [string]$settings.TwilioFromNumber
+$env:AYAN_WHATSAPP_TOKEN = [string]$settings.WhatsAppToken
+$env:AYAN_WHATSAPP_PHONE_NUMBER_ID = [string]$settings.WhatsAppPhoneNumberId
+$env:AYAN_SMS_WEBHOOK_URL = [string]$settings.SmsWebhookUrl
+$env:AYAN_SMS_WEBHOOK_TOKEN = [string]$settings.SmsWebhookToken
 
 $stdout = Join-Path $logDir "salon-server.out.log"
 $stderr = Join-Path $logDir "salon-server.err.log"
@@ -630,6 +669,12 @@ if (-not $NoTunnel) {
             # Kept on disk so the owner can find the address again after the
             # window is closed; it changes every time the tunnel restarts.
             Set-Content -LiteralPath (Join-Path $opsDir "salon-public-url.txt") -Value $tunnelUrl -Encoding ASCII
+            # The permanent public link reads this address from the repository,
+            # so a customer link keeps working after the laptop restarts.
+            $publishScript = Join-Path $opsDir "publish-salon-address.ps1"
+            if (Test-Path $publishScript) {
+                & powershell -NoProfile -ExecutionPolicy Bypass -File $publishScript -Url $tunnelUrl | Out-Null
+            }
         } else {
             # Never leave a stale address on disk: a phone pointed at a dead link
             # looks exactly like a broken salon.
@@ -663,6 +708,12 @@ elseif ($lanAddress) {
     Write-Host "                   Phones on the salon Wi-Fi can use the address above."
 }
 if ($keepAwakeProcess) { Write-Host "  Stay awake     : ON (this laptop will not sleep while the salon is serving)" }
+if ($settings.SmsProvider) {
+    Write-Host "  Sign-in codes  : real $($settings.SmsProvider) messages sent to the customer's mobile"
+} else {
+    Write-Host "  Sign-in codes  : written on this laptop to ops\salon-sign-in-codes.log"
+    Write-Host "                   Connect a real SMS provider any time: ops\connect-sms.cmd"
+}
 Write-Host ""
 Write-Host "On each salon phone: open the app, tap the AB mark five times, open Owner > Settings,"
 Write-Host "and paste the phone address above into 'Salon server address', then save."

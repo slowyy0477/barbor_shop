@@ -1,6 +1,7 @@
 package com.ayan.salon.server.config;
 
 import com.ayan.salon.server.service.OtpDeliveryGateway;
+import com.ayan.salon.server.service.SmsDeliveryClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,8 +38,25 @@ public class OtpConfiguration {
     @Bean
     @Profile("local")
     OtpDeliveryGateway localOtpGateway(
-            @Value("${ayan.auth.otp.inbox-path:}") String inboxPath) {
-        return new LocalInboxOtpGateway(inboxPath);
+            @Value("${ayan.auth.otp.inbox-path:}") String inboxPath,
+            @Value("${ayan.auth.otp.sender:Ayan Salon}") String sender,
+            @Value("${ayan.sms.provider:}") String smsProvider,
+            @Value("${ayan.sms.twilio.account-sid:}") String twilioSid,
+            @Value("${ayan.sms.twilio.auth-token:}") String twilioToken,
+            @Value("${ayan.sms.twilio.from-number:}") String twilioFrom,
+            @Value("${ayan.sms.whatsapp.token:}") String whatsappToken,
+            @Value("${ayan.sms.whatsapp.phone-number-id:}") String whatsappPhoneId,
+            @Value("${ayan.sms.webhook.url:}") String webhookUrl,
+            @Value("${ayan.sms.webhook.token:}") String webhookToken) {
+        LocalInboxOtpGateway inbox = new LocalInboxOtpGateway(inboxPath);
+        SmsDeliveryClient sms = SmsDeliveryClient.from(smsProvider,
+                SmsDeliveryClient.Config.from(twilioSid, twilioToken, twilioFrom, whatsappToken,
+                        whatsappPhoneId, webhookUrl, webhookToken));
+        // Until a provider is connected the code is written to this machine only.
+        // Once it is connected the customer receives a real message and the file
+        // stays behind as the counter-side safety net.
+        if (!sms.isConfigured()) return inbox;
+        return new SmsWithLocalFallbackOtpGateway(new SmsOtpDeliveryGateway(sms, sender), inbox);
     }
 
     @Bean
@@ -47,8 +65,72 @@ public class OtpConfiguration {
             RestClient.Builder client,
             @Value("${ayan.auth.otp.provider-url:}") String providerUrl,
             @Value("${ayan.auth.otp.provider-token:}") String providerToken,
-            @Value("${ayan.auth.otp.sender:Ayan Salon}") String sender) {
+            @Value("${ayan.auth.otp.sender:Ayan Salon}") String sender,
+            @Value("${ayan.sms.provider:}") String smsProvider,
+            @Value("${ayan.sms.twilio.account-sid:}") String twilioSid,
+            @Value("${ayan.sms.twilio.auth-token:}") String twilioToken,
+            @Value("${ayan.sms.twilio.from-number:}") String twilioFrom,
+            @Value("${ayan.sms.whatsapp.token:}") String whatsappToken,
+            @Value("${ayan.sms.whatsapp.phone-number-id:}") String whatsappPhoneId,
+            @Value("${ayan.sms.webhook.url:}") String webhookUrl,
+            @Value("${ayan.sms.webhook.token:}") String webhookToken) {
+        // A connected SMS/WhatsApp provider always wins, because a hosted salon
+        // has no machine on site where a code file could be read out.
+        SmsDeliveryClient sms = SmsDeliveryClient.from(smsProvider,
+                SmsDeliveryClient.Config.from(twilioSid, twilioToken, twilioFrom, whatsappToken,
+                        whatsappPhoneId, webhookUrl, webhookToken));
+        if (sms.isConfigured()) return new SmsOtpDeliveryGateway(sms, sender);
         return new HttpOtpDeliveryGateway(client, providerUrl, providerToken, sender);
+    }
+
+    /**
+     * Sends the sign-in code as a real SMS/WhatsApp message. The code is never
+     * logged, and a provider outage stays a hard failure so the customer is told
+     * the message could not be sent instead of waiting for a code that never comes.
+     */
+    static final class SmsOtpDeliveryGateway implements OtpDeliveryGateway {
+        private final SmsDeliveryClient sms;
+        private final String sender;
+
+        SmsOtpDeliveryGateway(SmsDeliveryClient sms, String sender) {
+            this.sms = sms;
+            this.sender = sender == null || sender.isBlank() ? "Ayan Salon" : sender.trim();
+        }
+
+        @Override
+        public void send(String canonicalPhone, String code) {
+            sms.send(canonicalPhone, sender + ": your sign-in code is " + code
+                    + ". It expires in 5 minutes. Do not share this code with anyone.");
+        }
+    }
+
+    /**
+     * Real message first, on-machine code file second. A customer standing at the
+     * counter must never be stuck because the provider had a bad minute, and the
+     * owner can always read the code out loud.
+     */
+    static final class SmsWithLocalFallbackOtpGateway implements OtpDeliveryGateway {
+        private static final org.slf4j.Logger LOG =
+                org.slf4j.LoggerFactory.getLogger("AyanOtpFallback");
+        private final OtpDeliveryGateway primary;
+        private final OtpDeliveryGateway fallback;
+
+        SmsWithLocalFallbackOtpGateway(OtpDeliveryGateway primary, OtpDeliveryGateway fallback) {
+            this.primary = primary;
+            this.fallback = fallback;
+        }
+
+        @Override
+        public void send(String canonicalPhone, String code) {
+            try {
+                primary.send(canonicalPhone, code);
+            } catch (RuntimeException failure) {
+                // Never log the code itself, only the fact that the fallback ran.
+                LOG.warn("The sign-in message provider rejected the request ({}); falling back to the "
+                        + "on-machine code file for {}", failure.getClass().getSimpleName(), canonicalPhone);
+                fallback.send(canonicalPhone, code);
+            }
+        }
     }
 
     static final class LocalInboxOtpGateway implements OtpDeliveryGateway {

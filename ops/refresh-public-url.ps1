@@ -10,6 +10,16 @@ $statePath = Join-Path $opsDir "salon-server.state.json"
 $urlPath = Join-Path $opsDir "salon-public-url.txt"
 $logDir = Join-Path $root "tmp"
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir | Out-Null }
+$publishScript = Join-Path $opsDir "publish-salon-address.ps1"
+
+# The permanent customer link is served from GitHub Pages and learns the current
+# tunnel address from api.json, so every refreshed address is published once.
+function Publish-SalonAddress([string]$value) {
+    if (-not $value) { return }
+    if (Test-Path -LiteralPath $publishScript) {
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $publishScript -Url $value | Out-Null
+    }
+}
 
 $reservedHosts = @("api.trycloudflare.com", "www.trycloudflare.com", "developers.cloudflare.com", "blog.cloudflare.com", "trycloudflare.com")
 
@@ -36,12 +46,14 @@ $port = if ($state -and $state.port) { $state.port } else { 8080 }
 if ($state -and $state.tunnelUrl -and (Test-TunnelCandidate $state.tunnelUrl)) {
     Set-Content -LiteralPath $urlPath -Value $state.tunnelUrl -Encoding ASCII
     Write-Host "Phone link is working: $($state.tunnelUrl)"
+    Publish-SalonAddress $state.tunnelUrl
     exit 0
 }
 if (Test-Path $urlPath) {
     $existing = (Get-Content -Raw -LiteralPath $urlPath).Trim()
     if (Test-TunnelCandidate $existing) {
         Write-Host "Phone link is working: $existing"
+        Publish-SalonAddress $existing
         exit 0
     }
 }
@@ -94,3 +106,5 @@ if ($state) {
 }
 Write-Host "New phone link: $tunnelUrl"
 Write-Host "Saved to ops\salon-public-url.txt"
+Publish-SalonAddress $tunnelUrl
+Write-Host "Published to the permanent link: https://slowyy0477.github.io/barbor_shop/"

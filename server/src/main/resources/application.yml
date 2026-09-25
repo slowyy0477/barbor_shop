@@ -68,5 +68,20 @@ ayan:
     provider-url: ${AYAN_NOTIFICATION_PROVIDER_URL:}
     provider-token: ${AYAN_NOTIFICATION_PROVIDER_TOKEN:}
     dispatch-delay-ms: ${AYAN_NOTIFICATION_DISPATCH_DELAY_MS:30000}
+  # Real SMS/WhatsApp delivery. Leave provider empty to keep the free file-based
+  # codes of the "local" profile; set it to twilio, whatsapp or webhook to text
+  # customers for real. The salon only pastes credentials, never code.
+  sms:
+    provider: ${AYAN_SMS_PROVIDER:}
+    twilio:
+      account-sid: ${AYAN_TWILIO_ACCOUNT_SID:}
+      auth-token: ${AYAN_TWILIO_AUTH_TOKEN:}
+      from-number: ${AYAN_TWILIO_FROM_NUMBER:}
+    whatsapp:
+      token: ${AYAN_WHATSAPP_TOKEN:}
+      phone-number-id: ${AYAN_WHATSAPP_PHONE_NUMBER_ID:}
+    webhook:
+      url: ${AYAN_SMS_WEBHOOK_URL:}
+      token: ${AYAN_SMS_WEBHOOK_TOKEN:}
   media:
     max-bytes: ${AYAN_MEDIA_MAX_BYTES:2097152}
