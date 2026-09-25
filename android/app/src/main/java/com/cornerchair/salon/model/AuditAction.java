@@ -1,0 +1,22 @@
+package com.cornerchair.salon.model;
+
+/** Stable event names for financial and security audit reporting. */
+public enum AuditAction {
+    DEPOSIT_SUBMITTED,
+    DEPOSIT_APPROVED,
+    DEPOSIT_REJECTED,
+    WITHDRAWAL_REQUESTED,
+    WITHDRAWAL_APPROVED,
+    WITHDRAWAL_REJECTED,
+    WITHDRAWAL_COMPLETED,
+    WALLET_ADJUSTED,
+    WALLET_REVERSED,
+    SERVICE_PRICE_CHANGED,
+    PAYMENT_METHOD_CHANGED,
+    REFERRAL_SETTINGS_CHANGED,
+    STAFF_ADDED,
+    STAFF_CHANGED,
+    STAFF_DEACTIVATED,
+    ACCOUNT_SUSPENDED,
+    SECURITY_REVIEWED
+}

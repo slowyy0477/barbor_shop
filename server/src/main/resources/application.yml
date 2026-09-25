@@ -1,0 +1,72 @@
+spring:
+  application:
+    name: ayan-salon-server
+  datasource:
+    url: ${JDBC_DATABASE_URL:jdbc:postgresql://localhost:5432/ayan_salon}
+    username: ${JDBC_DATABASE_USERNAME:ayan}
+    password: ${JDBC_DATABASE_PASSWORD:change-me}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  jackson:
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      # Keep the parser bounded even before MediaAssetService validates the
+      # configured per-image limit (the database hard limit is 10 MB).
+      max-file-size: ${AYAN_MEDIA_MAX_FILE_SIZE:10MB}
+      max-request-size: ${AYAN_MEDIA_MAX_REQUEST_SIZE:12MB}
+server:
+  error:
+    include-message: never
+  forward-headers-strategy: framework
+  compression:
+    enabled: true
+    mime-types: application/json,application/javascript,text/css,text/html
+    min-response-size: 1024
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+ayan:
+  auth:
+    session-secret: ${AYAN_AUTH_SESSION_SECRET:}
+    session-lifetime: ${AYAN_AUTH_SESSION_LIFETIME:PT12H}
+    owner-phone: ${AYAN_AUTH_OWNER_PHONE:}
+    owner-salon-id: ${AYAN_AUTH_OWNER_SALON_ID:}
+    owner-pin: ${AYAN_AUTH_OWNER_PIN:}
+    otp:
+      challenge-lifetime: ${AYAN_AUTH_OTP_CHALLENGE_LIFETIME:PT5M}
+      max-attempts: ${AYAN_AUTH_OTP_MAX_ATTEMPTS:5}
+      provider-url: ${AYAN_AUTH_OTP_PROVIDER_URL:}
+      provider-token: ${AYAN_AUTH_OTP_PROVIDER_TOKEN:}
+      sender: ${AYAN_AUTH_OTP_SENDER:Ayan Salon}
+      # Only used by the "local" profile, where the owner's own machine reads the
+      # code out to the customer because no SMS provider is connected yet.
+      inbox-path: ${AYAN_OTP_INBOX_PATH:}
+  web:
+    allowed-origins: ${AYAN_WEB_ALLOWED_ORIGINS:http://localhost:4173}
+  rate-limit:
+    enabled: ${AYAN_RATE_LIMIT_ENABLED:true}
+    general-per-minute: ${AYAN_RATE_LIMIT_GENERAL_PER_MINUTE:120}
+    otp-per-minute: ${AYAN_RATE_LIMIT_OTP_PER_MINUTE:5}
+    auth-per-minute: ${AYAN_RATE_LIMIT_AUTH_PER_MINUTE:20}
+    admin-per-minute: ${AYAN_RATE_LIMIT_ADMIN_PER_MINUTE:60}
+  notifications:
+    provider-url: ${AYAN_NOTIFICATION_PROVIDER_URL:}
+    provider-token: ${AYAN_NOTIFICATION_PROVIDER_TOKEN:}
+    dispatch-delay-ms: ${AYAN_NOTIFICATION_DISPATCH_DELAY_MS:30000}
+  media:
+    max-bytes: ${AYAN_MEDIA_MAX_BYTES:2097152}

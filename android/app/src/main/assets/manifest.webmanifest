@@ -1,0 +1,25 @@
+{
+  "name": "Ayan Beauty Salon OS",
+  "short_name": "Ayan Salon",
+  "description": "PKR salon bookings, wallet credit, reminders and owner operations.",
+  "id": "./",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#E5E5E5",
+  "theme_color": "#1E1E20",
+  "orientation": "portrait-primary",
+  "categories": ["beauty", "lifestyle", "business"],
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {"name": "Book a visit", "short_name": "Book", "url": "./?screen=book", "icons": [{"src": "icon.svg", "sizes": "any"}]},
+    {"name": "Find my profile", "short_name": "Lookup", "url": "./?lookup=1", "icons": [{"src": "icon.svg", "sizes": "any"}]}
+  ],
+  "icons": [{
+    "src": "icon.svg",
+    "sizes": "any",
+    "type": "image/svg+xml",
+    "purpose": "any maskable"
+  }]
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="shell_ink">#1E1E20</color>
+    <color name="shell_paper">#E5E5E5</color>
+    <color name="shell_coral">#FF9E3B</color>
+    <color name="shell_blush">#FFF0DD</color>
+</resources>

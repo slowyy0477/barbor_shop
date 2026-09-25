@@ -1,0 +1,6 @@
+target/
+.tmp/
+*.log
+*.err
+.env
+*.local.yml
