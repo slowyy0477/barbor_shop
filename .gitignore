@@ -33,6 +33,14 @@ ops/cloudflared.exe
 ops/salon-sign-in-codes.log
 # The free tunnel address changes on every restart, so it is local state only.
 ops/salon-public-url.txt
+# Optional stable-link client and its local configuration stay on this machine.
+ops/ngrok.exe
+ops/salon-tunnel.local.json
+# A GitHub access token, if the owner ever uses one, is never committed.
+ops/github-token.local.txt
+# Saved power settings for the one-click installer are machine specific.
+ops/power-settings-backup.pow
+ops/power-settings-backup.json
 
 # The salon web app is copied into the server at startup by
 # ops/sync-server-web.ps1 so the same https address serves the phone UI.
