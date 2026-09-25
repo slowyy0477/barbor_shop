@@ -98,11 +98,13 @@ because no SMS is sent.
 ### 2.4 Deprecated endpoints
 
 `/api/auth/otp/request`, `/api/auth/otp/verify` and `/api/auth/customer/register`
-stay mapped so an already-installed APK gets a clear message instead of a crash,
-but they are switched off with `ayan.auth.otp.enabled=false` (default) and answer
-`410 GONE` with code `SMS_DISABLED`:
+stay mapped so an already-installed APK gets a clear message instead of a crash.
+They answer `410 GONE` with code `SMS_DISABLED` unconditionally: there is no
+property to switch them back on, because the salon does not want a code path it
+is not using. Re-enabling them would mean a code change, a new APK and a new
+contract:
 
-> "SMS codes are switched off. Please update the app and sign in with your mobile number and password."
+> "SMS verification codes are switched off. Sign in with your mobile number and password."
 
 `/api/auth/pin/verify` keeps working as an alias of `/api/auth/password/login`
 for older clients.
@@ -120,6 +122,26 @@ for older clients.
    `sha256("network:" + clientIp)` into `signup_guards.ip_hash` and refuses
    registration once `ayan.auth.signup.max-per-network` (default `3`) accounts
    already exist for that `(salon_id, ip_hash)`.
+
+   The forwarding headers (`CF-Connecting-IP`, `X-Forwarded-For`, `X-Real-IP`)
+   are read **only when the request arrives from the tunnel client or the shop
+   network** (loopback, `10.*`, `192.168.*`, `169.254.*` and `172.16-31.*`), see
+   `AuthController.isLocalPeer`. Without that rule every phone behind one tunnel
+   would share a single network address and the fourth real customer would be
+   blocked. A request that arrives from a public address can never choose its own
+   network identity.
+
+   Known limitation, recorded on purpose: a device on the salon's own LAN is a
+   local peer, so it can still send a forwarding header of its choosing and is
+   not capped by this rule. The per-device cap and the first-visit referral rule
+   still apply, and tightening this to loopback-only is a one-line change if the
+   salon ever exposes port 8080 on an untrusted network.
+
+   Status codes, so a client never has to guess: both caps answer `409 CONFLICT`
+   with the message above, exactly like a duplicate mobile number. They are not
+   `429`, because the customer has not done anything wrong and no retry will
+   help until the owner changes the limit. `429 RATE_LIMITED` stays reserved for
+   repeated code requests.
 3. The client IP comes from `CF-Connecting-IP`, then the first `X-Forwarded-For`
    entry, then `request.getRemoteAddr()`. A free tunnel makes every phone look
    like one address otherwise, which would block the fourth real customer. The
@@ -160,11 +182,11 @@ APK, the GitHub Pages link and any future tunnel address.
 
 ## 6. Error copy shown to the customer (simple English)
 
-| Server `code` | Message |
+| Server response | Message |
 | --- | --- |
 | `UNAUTHORIZED` | "Wrong mobile number or password. Check both and try again." |
-| phone already used | "An account already exists for this mobile number. Sign in with your password instead." |
-| device already used | "This phone already created a salon account. Sign in with that mobile number and password, or ask the salon owner to reset it." |
-| network cap reached | "This internet connection already created 3 accounts. Sign in to your own account, or ask the salon owner to raise the limit." |
+| `409 CONFLICT` · phone already used | "An account already exists for this mobile number. Sign in with your password instead." |
+| `409 CONFLICT` · device already used | "This phone already created a salon account. Sign in with that mobile number and password, or ask the salon owner to reset it." |
+| `409 CONFLICT` · network cap reached | "This internet connection already created 3 accounts. Sign in to your own account, or ask the salon owner to raise the limit." |
 | `SMS_DISABLED` | "SMS verification codes are switched off. Sign in with your mobile number and password." |
-| lockout | "Too many wrong tries. Please wait 15 minutes and try again." |
+| `401 UNAUTHORIZED` · lockout | "Too many incorrect password attempts. Try again in a few minutes." |
