@@ -1,9 +1,10 @@
 <#
-  Copies the salon web app into the Spring server so the same https address
-  serves both the phone interface and the API. Same-origin hosting keeps the
-  Android WebView working without relaxing its file-access or cleartext rules.
+  Copies the salon web app into the optional Spring server, so a server the
+  owner starts himself can serve both the phone interface and the API from one
+  address. Same-origin hosting keeps the Android WebView working without
+  relaxing its file-access or cleartext rules.
 
-  start-salon-server.ps1 runs this automatically before every build.
+  Only needed when the owner chooses to run the Java server on his own machine.
 #>
 $ErrorActionPreference = "Stop"
 

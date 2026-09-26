@@ -2,7 +2,7 @@
 
 This directory contains the Java 17 Spring Boot backend for the Ayan Beauty Salon mobile app. It is deliberately separate from the offline WebView/Android bundle in the repository root. The server is the authoritative boundary for customer wallets, deposits, withdrawals, service payments, referrals, bookings, reminders, audit history, and owner reporting.
 
-The beginner deployment, secrets, TLS, backup, monitoring, rate-limit, and free-tier guidance is in [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md). The server is not ready to accept real traffic until the production checklist there is complete.
+This server is optional. It only runs when the owner starts it on a machine he controls, and no hosting blueprint, tunnel client or published address ships with this repository. The shipped phone app is offline and does not need it. Do not point real money or real customer traffic at it until TLS, secrets, backups, monitoring and rate limits are set up by the owner.
 
 ## Run locally
 

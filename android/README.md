@@ -1,8 +1,8 @@
 # Ayan Beauty Salon Android app
 
-This directory is an Android Java shell around the offline-first Ayan Beauty Salon app. The web experience is bundled under `app/src/main/assets`, so the APK does not need a local server or a network connection for the customer and owner screens. Release builds load `index.html?mode=release`, start with an empty customer and financial workspace, and use PKR throughout. Browser-only QA fixtures from `qa-seed.js` are not copied into the APK. The initial salon profile is Ayan Beauty Salon, VC8Q+R33 Ayan Beauty Salon, Uqab Plaza, Gate Number 2, Kamra Kalan.
+This directory is an Android Java shell around the offline-first salon app. The web experience is bundled under `app/src/main/assets`, so the APK does not need a local server or a network connection for the customer and owner screens. Release builds load `index.html?mode=release`, start with an empty customer and financial workspace, and use PKR throughout. Browser-only QA fixtures from `qa-seed.js` are not copied into the APK. A fresh install carries no salon name, logo or address: the owner types those in Owner > Settings and they appear on the phone from then on.
 
-For step-by-step installation on a phone, PWA setup, and production deployment limits, read the repository-level [DEPLOYMENT_GUIDE.md](../DEPLOYMENT_GUIDE.md).
+For step-by-step installation on a phone, read the repository-level [START-HERE.txt](../START-HERE.txt) and [README.md](../README.md).
 
 ## Build
 

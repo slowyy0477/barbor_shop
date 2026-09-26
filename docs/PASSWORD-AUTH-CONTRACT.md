@@ -153,8 +153,8 @@ for older clients.
    phone or network. Only creation is limited.
 5. Both caps are configurable through `AYAN_SIGNUP_MAX_PER_NETWORK` and
    `AYAN_SIGNUP_MAX_PER_DEVICE`. Zero switches that particular cap off.
-   `ops\verify-password-auth.ps1` proves all of the above against a running
-   server and removes the accounts it created.
+   The server test suite (`server/src/test`) proves all of the above against a
+   throwaway database and removes every account it creates.
 
 ## 4. CORS (this was the cause of "Request Failed (403)")
 
@@ -167,7 +167,7 @@ Because this API authenticates with a bearer token and never with cookies
 (`allowCredentials(false)`), the CORS mapping must accept **every** origin:
 allowed origins default to `*`, still overridable with
 `AYAN_WEB_ALLOWED_ORIGINS`. This removes the whole class of 403 failures for the
-APK, the GitHub Pages link and any future tunnel address.
+APK and for the GitHub Pages web app.
 
 ## 5. Client behaviour
 
