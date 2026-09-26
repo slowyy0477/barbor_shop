@@ -24,21 +24,21 @@ android/release-signing.properties
 *.iml
 .vscode/
 
-# Laptop salon server: local database credentials, runtime state and the
-# downloaded tunnel client stay on this machine only.
-ops/salon-server.local.json
-ops/salon-server.local.json.bak
-ops/salon-server.state.json
-# Live sign-in codes handed to customers at the counter: never commit or share.
+# Private files on the owner's own machine: passwords, tokens and saved state.
+# They are never committed and never shared.
+ops/*.local.json
+ops/*.local.json.bak
+ops/*.local.txt
+ops/*.state.json
 ops/salon-sign-in-codes.log
-# The free tunnel address changes on every restart, so it is local state only.
-# Optional stable-link client and its local configuration stay on this machine.
-# A GitHub access token, if the owner ever uses one, is never committed.
-ops/github-token.local.txt
-# Saved power settings for the one-click installer are machine specific.
 
-# The salon web app is copied into the server at startup by
-# ops/sync-server-web.ps1 so the same https address serves the phone UI.
+# Build output created only when the owner runs the Java server on this machine.
+server/target/
+server/.tmp/
+server/build.log
+server/build.err
+
+# The web app is copied into the server by ops/sync-server-web.ps1.
 server/src/main/resources/static/
 
 # OS files
@@ -46,4 +46,3 @@ Thumbs.db
 Desktop.ini
 tmp/
 *.log
-ops/render-values.local.txt
