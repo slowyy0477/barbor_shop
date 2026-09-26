@@ -2,139 +2,109 @@
 
 Simple steps. Do them once and the app keeps working.
 
-## 1. The permanent link (works on every phone, forever)
+This app is **offline**. It keeps all its data inside the phone. No computer has
+to be switched on, and the app never sends anything to the internet.
 
-Open this in any phone browser:
+## 1. Put the app on the phone
 
-**<https://slowyy0477.github.io/barbor_shop/>**
+**Android**
 
-- On iPhone: open it in Safari, tap Share, then **Add to Home Screen**. It looks
-  and works like a normal app.
-- On Android: open it in Chrome, tap the three dots, then **Add to Home screen**.
-- This link never changes. It opens the salon app and finds the shop laptop by
-  itself.
-
-## 2. The Android app file (APK)
-
-The file is on the shop laptop here:
-
-`E:\Barbar-Shop\Salon-App-v1.0.0.apk` (about 216 KB)
-
-Steps on the phone:
-
-1. Send that file to the phone (USB cable, or WhatsApp the file to yourself).
+1. Send `E:\Barbar-Shop\Salon-App-v1.0.0.apk` to the phone (USB cable, or your own
+   cloud storage).
 2. Tap the file on the phone.
-3. Android will say the file is from an unknown source - tap **Settings** and
-   allow **Install unknown apps** for the app you are using (Files or Chrome).
-4. Tap **Install**, then open the app.
+3. Android says the file came from an unknown source. Tap **Settings**, allow
+   **Install unknown apps** for the app you are using (Files or Chrome).
+4. Tap **Install**, then **Open**. If Android offers **Update**, accept it.
 
-Needs Android 7 or newer. That is almost every phone from 2017 onwards.
+Never delete `android\release-signing.properties` or the keystore on your
+computer. The same key is needed for every future update of this app.
 
-## 3. What the app does by itself
+**iPhone**
 
-1. It looks up the shop server address from the permanent link above.
-2. It connects to the salon automatically. You do not type anything, ever.
-3. If the shop laptop is switched off or has no internet, the app still opens
-   and works in offline mode on the phone's own data.
-4. When the laptop is switched on again, the app reconnects on its own.
+1. Open <https://slowyy0477.github.io/barbar_shop/> in Safari.
+2. Tap **Share**, then **Add to Home Screen**.
+3. Open it from the home screen. It looks and works like a normal app.
 
-The laptop also watches the free internet link while the shop is open. It checks
-every couple of minutes and, if the link has stopped answering, it opens a fresh
-one (Cloudflare first, then serveo, then Tunnelmole) and publishes the new
-address. Phones pick it up by themselves within a few minutes, so there is
-nothing to do by hand.
+The phone does not need internet for day-to-day use. Opening the iPhone link the
+first time does need internet, and after that it keeps working from the home
+screen icon.
 
-Only if auto-find ever fails: open the app, tap the round salon mark 5 times, sign in
-as owner, and use **Owner > Settings > Salon server address**. Paste the address
-shown by `ops\status-salon-server.cmd` on the laptop. Only `https://` addresses
-are accepted.
+## 2. Customer sign up and sign in
 
-## 4. Owner menu (customers never see it)
+There is no SMS code anywhere in this app. A mobile number and a password are all
+a customer needs.
 
-The owner menu is hidden on purpose:
+**New customer**
 
-1. Tap the round salon logo at the top of the app 5 times quickly.
-2. Tap **Owner**.
-3. Type your owner mobile number and your owner password. Tap **Sign in**.
+1. Tap **Sign in**, then **Create new account**.
+2. Type the name, the mobile number, the password, then the password again.
+3. Tick the box that allows promotional messages (optional).
+4. Tap **Create account**. The customer is signed in straight away.
 
-The owner password lives on the shop laptop only. To see it or change it, double
-click one of these on the laptop:
-
-    E:\Barbar-Shop\ops\show-owner-password.cmd    (shows it)
-    E:\Barbar-Shop\ops\set-owner-password.cmd     (changes it)
-
-Five wrong tries pause the owner sign in for 15 minutes. Use a password of at
-least 10 characters for your own safety.
-
-Customers can never see this menu. Only the owner password opens it, and the
-server refuses owner data for customer accounts even if someone finds the button.
-
-## 5. Customer sign up and sign in (mobile number + password)
-
-There is no SMS code anywhere in this app. Customers use a mobile number and a
-password only.
-
-New customer, first time:
-
-1. Open the app and tap **Sign in**.
-2. Tap **Create new account**.
-3. Type name, mobile number, password, then the same password again.
-4. Tick the box that allows promotional messages (optional, but the customer
-   must tick it before any offer message can be sent).
-5. Tap **Create account**. The customer is signed in straight away.
-
-The password rule, tell the customer this:
+Password rule, tell the customer this:
 
 - at least 10 characters and at most 20
 - must have at least one letter and at least one number
 - example: `SalonPass2026`
 
-Because there is no SMS code, the password cannot be recovered by message. Tell
-the customer to remember it.
+Tell the customer to remember the password. Nothing can be sent to the phone to
+recover it.
 
-Coming back later:
+**Coming back later**
 
 1. Tap **Sign in**.
 2. Type the same mobile number and password.
-3. Tap **Sign in**. The app keeps them signed in on that phone, so they normally
-   do not type it again.
+3. Tap **Sign in**. The phone remembers them, so normally they do not type it
+   again.
 
-Customer forgot the password? You fix it as the owner: open **Owner > Customers**,
-find the customer, tap **Reset password**, set a new one, then tell the customer
-the new password. They can change it later from **More**.
+**Customer forgot the password?** You fix it as the owner: open
+**Owner > Customers**, find the customer, tap **Reset password**, set a new one,
+then tell the customer the new password. They can change it later from **More**.
 
-Limits on new accounts:
+## 3. Owner menu (customers never see it)
 
-- ONE new account per phone. A second account on the same phone is refused.
-- THREE new accounts per internet connection. A fourth is refused.
-- Change both numbers any time in `E:\Barbar-Shop\ops\salon-server.local.json`
-  using `MaxAccountsPerDevice` and `MaxAccountsPerIp`. Set one to 0 to switch
-  that limit off.
-- If a family shares one phone, set `MaxAccountsPerDevice` to 2 or 3 first,
-  otherwise the second family member is refused.
+The owner menu is hidden on purpose:
 
-## 6. Two ways to run the salon
+1. Tap the round salon logo at the top of the app 5 times quickly.
+2. Tap **Owner**.
+3. Type the owner access code and tap **Sign in**.
 
-| Way | Cost | Good for | Watch out |
-| --- | --- | --- | --- |
-| Shop laptop runs everything | free | normal days, everything stays with you | laptop must stay on while customers use the online mode |
-| Free cloud copy (Render + Neon) | free | laptops off, power cut | free servers sleep after ~15 idle minutes and take ~50 seconds to wake |
+The first code is **530146**. Change it on your first day: the app was built with
+that code, so anyone who reads these files knows it. Change it in
+**Owner > Settings**.
 
-Steps for the cloud copy: `docs\PERMANENT-HOSTING.md`. You sign in once with your
-GitHub account `slowyy0477` and paste the values - nothing else.
+Five wrong tries pause owner sign in for 15 minutes. Customers can never open
+this menu.
 
-## 7. If something does not work
+## 4. Set the salon up once
 
-1. Laptop switched on and connected to internet?
-2. On the laptop run `ops\status-salon-server.cmd`. It must show the server as
-   healthy and print the phone address.
-3. Phone has internet (mobile data is fine)?
-4. Close the app completely and open it again. Still stuck? Open the permanent
-   link in the phone browser - it shows the same app.
+1. **Owner > Settings** - salon name, tagline, phone, address, opening hours, and
+   the phone app name and logo.
+2. **Owner > Services & staff** - your services with prices and durations, your
+   barbers, and the haircut styles with photos.
+3. **Owner > Settings** - wallet top-up amount, first deposit bonus, expiry days,
+   reminder cycle and referral reward.
 
-## 8. Keep private (never send these to anyone)
+Every amount is in **PKR** and can be changed whenever you like. Changing a price
+does not change any old bill.
 
-- `ops\salon-server.local.json` (database password and provider keys)
-- the release keystore and `release-signing.properties` (needed for every future
-  app update - always use the same one)
-- customer names, phone numbers and wallet history
+## 5. Keep a copy of your data
+
+All the data lives on that one phone. If the phone is lost, reset or the app is
+uninstalled, the data goes with it.
+
+Use **Owner > Settings > Export workspace data** at the end of each week and keep
+that file somewhere safe.
+
+## 6. If something does not work
+
+1. Close the app completely and open it again.
+2. Check the phone has free storage space.
+3. Still stuck? Keep your exported copy safe, then reinstall the APK.
+
+## 7. Keep private
+
+- The owner access code.
+- Customer names, mobile numbers and wallet history.
+- The export files, and the release keystore with
+  `android\release-signing.properties`.

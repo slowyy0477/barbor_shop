@@ -33,26 +33,24 @@
     </script>
     <script>
       /*
-       * Where is the salon server? The page can be opened in four different ways
-       * and each one needs a different answer:
+       * This app is offline. All salon data lives on the phone itself, and
+       * nothing is ever published to the internet.
        *
-       *   1. the link carries ?apiBaseUrl=...            -> use it as given
-       *   2. the Android shell stored an address         -> it injects the global
-       *   3. the salon server itself delivered this page -> same origin
-       *   4. the app is hosted online (GitHub Pages)     -> read api.json, which
-       *      the salon laptop republishes whenever its free tunnel address moves
+       * A salon server address is used only when somebody deliberately supplies
+       * one, in exactly two ways:
        *
-       * The address is resolved before app.js starts so the first screen is
-       * already in the right mode. Nothing here can break the offline app: every
-       * lookup is time-boxed and a failure simply leaves the offline shell.
+       *   1. the link carries ?apiBaseUrl=...          -> use it as given
+       *   2. the Android shell injects the global      -> use it as given
+       *
+       * There is no automatic discovery: the page never contacts GitHub or any
+       * other computer looking for an address. When the page happens to be
+       * served by a local server that answers /actuator/health, that same origin
+       * is used, which keeps an optional private setup working.
        */
       (() => {
-        const PUBLISHED_CONFIG_URL = "https://slowyy0477.github.io/barbor_shop/api.json";
-        const DISCOVERED_KEY = "ayan-discovered-api-base";
         const meta = document.querySelector('meta[name="api-base-url"]');
         const salonMeta = document.querySelector('meta[name="salon-id"]');
         const params = new URLSearchParams(location.search || "");
-        const notify = (name) => { try { window.dispatchEvent(new Event(name)); } catch (_) { /* older shells */ } };
         function currentBase() {
           return String(window.__AYAN_API_BASE_URL__ || (meta && meta.getAttribute("content")) || "").trim().replace(/\/+$/, "");
         }
@@ -77,11 +75,6 @@
             .catch(() => null)
             .then((value) => { clearTimeout(timer); return value; });
         }
-        function publishedConfig() {
-          return readJson(`${PUBLISHED_CONFIG_URL}?t=${Date.now()}`, 4000)
-            .then((value) => (value && apply(value.apiBaseUrl, value.salonId) ? true : false))
-            .catch(() => false);
-        }
         function sameOriginServer() {
           return readJson(`${location.origin}/actuator/health`, 3000).then((health) => {
             if (health && String(health.status || "").toUpperCase() === "UP") return apply(location.origin);
@@ -92,35 +85,10 @@
         window.__AYAN_API_BOOT__ = Promise.resolve();
         if (params.get("apiBaseUrl") || currentBase()) return;
 
-        // 3. Same-origin hosting: the salon server answered this request.
+        // Only a page that a local server actually delivered (http/https) may
+        // adopt its own origin. The bundled phone copy opens offline, always.
         if (location.protocol === "https:" || location.protocol === "http:") {
-          window.__AYAN_API_BOOT__ = sameOriginServer()
-            .then((found) => found || publishedConfig())
-            .catch(() => false);
-          return;
-        }
-
-        // 2. The offline Android bundle: start instantly from the last address
-        //    that was published for this salon, then refresh it in the
-        //    background. A phone that never finds a server stays offline, and a
-        //    phone the owner deliberately set to offline mode stays offline.
-        if (location.protocol === "file:") {
-          let cached = "";
-          let optedOut = false;
-          try {
-            cached = String(localStorage.getItem(DISCOVERED_KEY) || "");
-            optedOut = localStorage.getItem("ayan-api-opt-out") === "1";
-          } catch (_) { cached = ""; optedOut = false; }
-          if (optedOut) return;
-          if (cached && cached !== "none") apply(cached);
-          publishedConfig().then((found) => {
-            const fresh = currentBase();
-            try {
-              if (found && fresh && fresh !== cached) localStorage.setItem(DISCOVERED_KEY, fresh);
-              if (!found && !cached) localStorage.setItem(DISCOVERED_KEY, "none");
-            } catch (_) { /* private storage */ }
-            if (found && fresh && fresh !== cached) notify("ayan-api-discovered");
-          });
+          window.__AYAN_API_BOOT__ = sameOriginServer().catch(() => false);
         }
       })();
     </script>

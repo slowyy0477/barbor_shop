@@ -1378,7 +1378,7 @@ function ownerBrandingPanel() {
 
 function ownerSettingsProduction() {
   const html = ownerSettingsProductionBase();
-  const enhanced = html.replace('<div class="settings-grid">', `<div class="settings-grid">${ownerBrandingPanel()}${phoneAppPanel()}${serverAddressPanel()}`);
+  const enhanced = html.replace('<div class="settings-grid">', `<div class="settings-grid">${ownerBrandingPanel()}${phoneAppPanel()}`);
   if (!RELEASE_MODE) return enhanced;
   return enhanced
     .replace(/Export test data for review or reset (?:the|this) local workspace\.?/g, "Export salon workspace data or reset this workspace.")
@@ -1876,7 +1876,7 @@ function handleAction(e) {
     render();
     return;
   }
-  const ownerOnlyActions = new Set(["complete-booking", "open-walkin", "add-customer", "edit-customer", "add-service", "add-staff", "add-addon", "add-haircut-style", "edit-service", "save-service", "edit-staff", "save-staff", "edit-addon", "save-addon", "edit-haircut-style", "save-haircut-style", "toggle-haircut-style", "remove-haircut-style", "remove-haircut-photo", "save-booking-status", "adjust-wallet", "save-wallet-adjustment", "approve-deposit", "reject-deposit", "complete-withdrawal", "reject-withdrawal", "toggle-payment-method", "save-settings", "remove-logo", "export-json", "export-report", "reset-data", "save-server-url", "clear-server-url", "apply-phone-branding"]);
+  const ownerOnlyActions = new Set(["complete-booking", "open-walkin", "add-customer", "edit-customer", "add-service", "add-staff", "add-addon", "add-haircut-style", "edit-service", "save-service", "edit-staff", "save-staff", "edit-addon", "save-addon", "edit-haircut-style", "save-haircut-style", "toggle-haircut-style", "remove-haircut-style", "remove-haircut-photo", "save-booking-status", "adjust-wallet", "save-wallet-adjustment", "approve-deposit", "reject-deposit", "complete-withdrawal", "reject-withdrawal", "toggle-payment-method", "save-settings", "remove-logo", "export-json", "export-report", "reset-data", "apply-phone-branding"]);
   if (ownerOnlyActions.has(action) && !requireOwnerSession()) return;
   if(action === "close-modal") { if(e.target.closest("[data-modal-content]") && e.target !== el) return; ui.modal=null; render(); return; }
   if (action === "retry-api") { bootstrapApi(); return; }
@@ -1913,8 +1913,6 @@ function handleAction(e) {
   if(action === "save-sign-in-pin") { saveSignInPin();return; }
   if(action === "reset-customer-pin") { resetCustomerPinFromOwner(el.dataset.customerId);return; }
   if(action === "set-customer-password") { setCustomerSignInPassword(el.dataset.customerId);return; }
-  if(action === "save-server-url") { saveServerAddress();return; }
-  if(action === "clear-server-url") { clearServerAddress();return; }
   if(action === "apply-phone-branding") { applyPhoneBranding();return; }
   if(action === "open-style-photo") { ui.modal={type:"style-photo",styleId:el.dataset.styleId};render();return; }
   if(action === "start-customer-signup") {
@@ -2550,15 +2548,6 @@ if (typeof window !== "undefined") {
   window.addEventListener("ayan-api-configured", () => {
     if (apiModeEnabled() && ui.loading && !ui.apiBusy) bootstrapApi();
   });
-  // The bundled phone app also looks up the published salon address by itself.
-  // When that lookup finds a live server after the offline shell has already
-  // painted, reconnect without asking the owner to retype anything.
-  window.addEventListener("ayan-api-discovered", () => {
-    if (ui.apiBusy || !apiModeEnabled()) return;
-    ui.loading = true;
-    render();
-    bootstrapApi();
-  });
 }
 
 if (typeof document !== "undefined") {
@@ -3051,38 +3040,6 @@ function pinSecurityPanel() {
     ? "Your mobile number and this password open your profile. No SMS code is used anywhere in this app."
     : "Your mobile number and this password open your profile on this phone. Five wrong attempts pause sign-in for 15 minutes.";
   return `<div class="surface panel"><div class="section-head"><h2>Sign-in password</h2><span class="tag ${customerHasPin(target) ? "tag-success" : "tag-neutral"}">${label}</span></div><p class="list-meta" style="font-size:13px;margin-bottom:15px">${intro}</p><div class="form-grid two"><div class="form-field"><label>New password</label><input data-pin-new type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="10 to 20 characters"></div><div class="form-field"><label>Confirm new password</label><input data-pin-confirm type="password" inputmode="text" autocomplete="new-password" maxlength="20" placeholder="Repeat the password"></div></div><div class="form-field"><label>Current password (only when changing it)</label><input data-pin-current type="password" inputmode="text" autocomplete="current-password" maxlength="20" placeholder="Your current password"></div><button class="btn btn-primary" data-action="save-sign-in-pin">${customerHasPin(target) ? "Change password" : "Create password"}</button></div>`;
-}
-
-/** Only the installed Android shell can change the salon server address. */
-function serverAddressPanel() {
-  if (!nativeShellAvailable()) return "";
-  const configured = nativeServerUrl();
-  const status = configured || "Offline app on this phone";
-  return `<div class="surface panel"><div class="section-head"><h2>Salon server address</h2><span class="tag ${configured ? "tag-success" : "tag-neutral"}">${configured ? "Connected" : "Offline"}</span></div><p class="list-meta" style="font-size:13px;margin-bottom:15px">Point this phone at the salon server running on the shop laptop. Leave it empty to keep this phone working offline on its own data.</p><div class="settings-line"><span>Current</span><strong style="word-break:break-all">${htmlesc(status)}</strong></div><div class="form-field" style="margin-top:12px"><label>Server address (https)</label><input data-server-url value="${htmlesc(configured)}" placeholder="https://salon.example.com" autocapitalize="off" autocomplete="off" spellcheck="false"></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" data-action="save-server-url">Save &amp; reconnect</button><button class="btn btn-secondary" data-action="clear-server-url">Use offline mode</button></div><div class="notice notice-info" style="margin-top:13px">Only https addresses are accepted. Ask the person who set up the laptop for the current address.</div></div>`;
-}
-
-function saveServerAddress() {
-  const value = String(document.querySelector("[data-server-url]")?.value || "").trim();
-  if (!value) { clearServerAddress(); return; }
-  if (!/^https:\/\/[^\s/?#]+$/i.test(value)) {
-    toast("Enter a full https:// server address, for example https://salon.example.com.", "error");
-    return;
-  }
-  let accepted = false;
-  try { accepted = window.AyanSalonNative?.setServerUrl?.(value) === true; } catch (_) { accepted = false; }
-  if (!accepted) { toast("That address was not accepted. Use a bare https:// address without a path.", "error"); return; }
-  // A deliberate choice beats the published address the app finds by itself.
-  try { localStorage.removeItem("ayan-api-opt-out"); } catch (_) { /* private storage */ }
-  toast("Server address saved. Reconnecting this phone.");
-}
-
-function clearServerAddress() {
-  let cleared = false;
-  try { cleared = window.AyanSalonNative?.clearServerUrl?.() !== false; } catch (_) { cleared = false; }
-  // Remember that this phone really wants to stay offline, otherwise the
-  // automatic lookup would reconnect it on the next start.
-  if (cleared) { try { localStorage.setItem("ayan-api-opt-out", "1"); } catch (_) { /* private storage */ } }
-  toast(cleared ? "Offline mode restored on this phone." : "The address could not be cleared.", cleared ? "success" : "error");
 }
 
 /**

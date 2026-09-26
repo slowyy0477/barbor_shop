@@ -62,17 +62,8 @@ public class MainActivity extends Activity {
      */
     private static final String SHELL_PREFERENCES = "ayan_shell";
     private static final String PREFERENCE_SERVER_URL = "server_url";
-    /**
-     * The salon laptop republishes its current HTTPS tunnel address in this tiny
-     * public file (never a credential) so a freshly installed phone can find the
-     * salon without the owner typing an address.
-     */
-    private static final String PUBLISHED_CONFIG_URL = "https://slowyy0477.github.io/barbor_shop/api.json";
-    /** Address this phone found by itself; an owner-typed address always wins over it. */
-    private static final String PREFERENCE_DISCOVERED_SERVER_URL = "discovered_server_url";
     /** True when the owner deliberately chose offline mode on this phone. */
     private static final String PREFERENCE_OFFLINE_CHOICE = "offline_choice";
-    private static final int MAX_CONFIG_BYTES = 2048;
     /** Owner-chosen salon name, applied to the launch screen and home-screen icon. */
     private static final String PREFERENCE_SALON_NAME = "salon_name";
     private static final String SALON_LOGO_FILE = "salon-logo.png";
@@ -108,9 +99,6 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         webView.loadUrl(startUrl());
-        // A freshly installed phone connects on its own: the salon laptop publishes
-        // its current address, so the owner never has to type one.
-        refreshDiscoveredServerUrl();
         // A timeout keeps a slow or unavailable WebView from leaving the launch screen up forever.
         handler.postDelayed(new Runnable() {
             @Override
@@ -318,28 +306,16 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * An address the owner typed on this phone wins, then a value baked at build
-     * time, then the address this phone looked up for itself.
+     * This app is offline. A server address is used only when one was deliberately
+     * baked in at build time or typed on this phone; the app never looks one up
+     * from the internet by itself.
      */
     private String resolvedServerUrl() {
         String saved = savedServerUrl();
         if (!saved.isEmpty()) {
             return saved;
         }
-        String baked = normalizeServerUrl(BuildConfig.API_BASE_URL == null ? "" : BuildConfig.API_BASE_URL.trim());
-        if (!baked.isEmpty()) {
-            return baked;
-        }
-        return discoveredServerUrl();
-    }
-
-    private String discoveredServerUrl() {
-        try {
-            return normalizeServerUrl(getSharedPreferences(SHELL_PREFERENCES, MODE_PRIVATE)
-                    .getString(PREFERENCE_DISCOVERED_SERVER_URL, ""));
-        } catch (RuntimeException ignored) {
-            return "";
-        }
+        return normalizeServerUrl(BuildConfig.API_BASE_URL == null ? "" : BuildConfig.API_BASE_URL.trim());
     }
 
     private boolean offlineChoiceStored() {
@@ -348,89 +324,6 @@ public class MainActivity extends Activity {
                     .getBoolean(PREFERENCE_OFFLINE_CHOICE, false);
         } catch (RuntimeException ignored) {
             return false;
-        }
-    }
-
-    /**
-     * Looks up the address the salon published so a just-installed phone reaches
-     * the salon without any typing. It runs off the UI thread, is time-boxed and
-     * stays silent when it fails, so a phone without internet simply stays
-     * offline. A phone where the owner typed an address or chose offline mode is
-     * never overridden.
-     */
-    private void refreshDiscoveredServerUrl() {
-        if (!savedServerUrl().isEmpty() || offlineChoiceStored()) {
-            return;
-        }
-        final String current = resolvedServerUrl();
-        Thread lookup = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                final String found = fetchPublishedServerUrl();
-                if (found.isEmpty() || found.equals(current)) {
-                    return;
-                }
-                try {
-                    getSharedPreferences(SHELL_PREFERENCES, MODE_PRIVATE).edit()
-                            .putString(PREFERENCE_DISCOVERED_SERVER_URL, found).apply();
-                } catch (RuntimeException ignored) {
-                    return;
-                }
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (webView != null && !isFinishing()) {
-                            bundledFallbackShown = false;
-                            webView.loadUrl(startUrl());
-                        }
-                    }
-                });
-            }
-        }, "salon-address-lookup");
-        lookup.setDaemon(true);
-        lookup.start();
-    }
-
-    /** Reads apiBaseUrl from the small config file the salon laptop publishes. */
-    private static String fetchPublishedServerUrl() {
-        HttpURLConnection connection = null;
-        InputStream stream = null;
-        try {
-            URL url = new URL(PUBLISHED_CONFIG_URL + "?t=" + System.currentTimeMillis());
-            connection = (HttpURLConnection) url.openConnection();
-            connection.setConnectTimeout(4000);
-            connection.setReadTimeout(4000);
-            connection.setInstanceFollowRedirects(true);
-            connection.setRequestProperty("Accept", "application/json");
-            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                return "";
-            }
-            stream = connection.getInputStream();
-            byte[] buffer = new byte[MAX_CONFIG_BYTES];
-            int total = 0;
-            int read;
-            while (total < buffer.length && (read = stream.read(buffer, total, buffer.length - total)) > 0) {
-                total += read;
-            }
-            if (total <= 0) {
-                return "";
-            }
-            String body = new String(buffer, 0, total, "UTF-8");
-            Matcher matcher = Pattern.compile("\"apiBaseUrl\"\\s*:\\s*\"([^\"]{0,256})\"").matcher(body);
-            return matcher.find() ? normalizeServerUrl(matcher.group(1)) : "";
-        } catch (Exception ignored) {
-            return "";
-        } finally {
-            if (stream != null) {
-                try {
-                    stream.close();
-                } catch (IOException ignored) {
-                    // Nothing left to close.
-                }
-            }
-            if (connection != null) {
-                connection.disconnect();
-            }
         }
     }
 
@@ -460,11 +353,8 @@ public class MainActivity extends Activity {
             return;
         }
         bundledFallbackShown = true;
-        Toast.makeText(this, "Salon server is not reachable - working offline", Toast.LENGTH_LONG).show();
+        Toast.makeText(this, "Working offline on this phone", Toast.LENGTH_SHORT).show();
         webView.loadUrl(START_URL + "&offline=1");
-        // The salon may have moved to a fresh tunnel address while this phone was
-        // offline, so look the published address up once more.
-        refreshDiscoveredServerUrl();
     }
 
     /** Applies a new address and immediately reloads into it (or back to bundled mode). */

@@ -1,182 +1,100 @@
 Salon App - Start Here
 
-WHAT YOU HAVE
-
-Two ways to use the same app:
-
-1. One phone only (works today, no internet needed)
-   The APK keeps its own customers, bookings and wallet on that one phone.
-
-2. Laptop as the salon server (free, shared between phones)
-   The shop laptop runs the salon database and server. Every phone that opens
-   the app sees the same customers, bookings and wallet. No monthly host is
-   needed; the laptop is the server.
-
-   Your permanent customer link (never changes):
-   https://slowyy0477.github.io/barbor_shop/
-
-   Open that link on any phone. While the shop laptop is switched on with the
-   salon server running, the page finds the server by itself and shows the
-   shared salon data. When the laptop is off, the link still opens and says
-   that the salon server is not reachable.
+This app is OFFLINE. Everything stays on the phone it is installed on.
+Nothing runs on any computer, and nothing is sent to the internet.
 
 
-PART 1 - USE THE APK ON ONE PHONE TODAY
+HOW TO GET THE APP ON A PHONE
 
-1. On the computer open:
-   E:\Barbar-Shop\Salon-App-v1.0.0.apk
-2. Send that file privately to the Android phone with a USB cable or private
-   cloud storage.
-3. On the phone open Files, tap the APK, allow Files to install unknown apps,
-   then tap Install and Open.
-4. A fresh install is empty. There are no demo customers or demo money records.
-   The installed name starts as the neutral "Salon".
-   If the shop laptop is switched on and running the salon server, the app
-   finds it by itself, so nothing has to be typed in.
-5. Owner > Settings > "Phone app name & logo" saves your salon name and logo on
-   that phone. The launch screen shows them from the next start, and Android
-   offers a home-screen icon with the same name and logo. Android cannot rename
-   an app that is already installed, so keep that icon on staff phones.
+Android
 
-Customer sign up and sign in on the phone
+1. Copy E:\Barbar-Shop\Salon-App-v1.0.0.apk to the phone (USB cable or your own
+   cloud storage).
+2. Tap the file on the phone.
+3. Android says the file is from an unknown source. Tap Settings, allow
+   "Install unknown apps" for the app you are using, then tap Install and Open.
 
-There is no SMS code in this app any more. A mobile number and a password are
-the only things a customer needs.
+iPhone
 
-- New customer: tap Sign in, then Create new account, then type the name, the
-  mobile number and a password twice, tick the promotions box and tap Create
-  account. The customer is signed in straight away.
-- A complete Pakistani mobile number is accepted
-  (03xx xxx xxxx, 3xxxxxxxxx, +92xxxxxxxxxx or 0092xxxxxxxxxx).
+1. Open https://slowyy0477.github.io/barbor_shop/ in Safari.
+2. Tap Share, then "Add to Home Screen".
+3. It opens like a normal app from your home screen.
+
+Both are the same app with the same data model. Pick one per phone.
+
+
+CUSTOMER SIGN IN
+
+- New customer: tap Sign in, then Create new account. Type the name, the mobile
+  number and a password twice, tick the promotions box, then tap Create account.
+  The customer is signed in straight away.
 - The password must be 10 to 20 characters and must have at least one letter and
   at least one number. Example: SalonPass2026.
-- Coming back later: the same mobile number and the same password. The app keeps
-  the customer signed in on that phone, so they normally do not type it again.
-- Five wrong password tries pause sign-in for 15 minutes.
-- Forgot the password? There is no code to resend it. The owner opens
-  Owner > Customers, taps Reset password, sets a new password and tells the
-  customer what it is.
-- Only ONE new account can be made per phone, and only THREE per internet
-  connection. Change that in ops\salon-server.local.json with the keys
-  MaxAccountsPerDevice and MaxAccountsPerIp (0 switches a limit off). A family
-  that shares one phone should set MaxAccountsPerDevice to 2 or 3.
-
-Owner sign-in on the phone (offline mode)
-
-1. Tap the salon mark (the round logo at the top) five times quickly.
-2. With the laptop server running, type the owner mobile number and the owner
-   password. The mobile number can be left empty when you type the password.
-   Double-click ops\show-owner-password.cmd to read the password again, and
-   ops\set-owner-password.cmd to change it (10 to 20 characters, with at least
-   one letter and one digit).
-   Without a server, the offline owner code is 530146 - change it immediately
-   in Owner > Settings.
-3. Lock the owner workspace when finished.
-
-Haircut photos
-
-- The owner adds photos in Owner > Services & staff > Add haircut style.
-- In that same form the owner can link the style to one of his services
-  ("Bookable service"). Customers then get a real "Book this look" button that
-  opens the booking screen with that service already chosen.
-- Every style row has Edit, Hide/Show and Remove. Remove takes the style off the
-  customer home screen and keeps the record, so nothing financial is deleted.
-- Customers see those photos in the Haircut styles strip on Home. The cards
-  slide in one after another as the strip appears, the photos move gently, and
-  tapping a photo opens the full look with a Book this look button.
-- A style without a booking link still shows its photo and price, and the
-  customer gets a "Choose a service" button instead.
-- Phones that ask for reduced motion show the photos without animation.
-
-PART 2 - MAKE THE LAPTOP THE SALON SERVER (FREE)
-
-Easiest way - let the laptop do it by itself
-
-1. Setup is already done on the shop laptop. Nothing has to be installed again.
-   The salon server starts by itself every time you sign in to Windows, and the
-   laptop stops going to sleep while it is serving.
-2. You have three shortcuts on the Desktop (and the same files in
-   E:\Barbar-Shop):
-     1 START Salon   - turn everything on by hand any time
-                       (file: 1 START SALON.cmd)
-     2 STOP Salon    - turn the server and the phone link off
-                       (file: 2 STOP SALON.cmd)
-     3 CHECK Salon   - one screen: database, server, phone address
-                       (file: 3 CHECK SALON.cmd)
-3. Most days you do nothing: switch the laptop on, sign in to Windows, and the
-   black window starts and closes by itself.
-4. If "1 START Salon" is double-clicked while everything is already running it
-   simply says "ALREADY ON" and changes nothing.
-5. Beginners: double-click "3 CHECK Salon" whenever you are unsure.
-   Full guide: ops\README-ONE-CLICK.md
-
-Manual way (if you prefer typing)
-
-One-time setup on the shop laptop:
-
-1. Open PowerShell in E:\Barbar-Shop and run:
-   powershell -ExecutionPolicy Bypass -File .\ops\start-salon-server.ps1 -OwnerPhone 03xxxxxxxxx
-   (Replace 03xxxxxxxxx with the owner's own mobile number.)
-2. The script prepares the PostgreSQL database, builds the server, starts it,
-   and opens a free https tunnel. It prints:
-     - Sign-in: mobile number and password (no SMS codes are used)
-3. On every salon phone that should share data:
-   - Install the APK and open it.
-   - The app looks up the salon address that this laptop publishes for you.
-     Nothing has to be typed.
-   - If a phone still says "Offline app on this phone", tap the salon mark five
-     times, open Owner > Settings, paste the printed link into
-     "Salon server address" and save.
-   - Customers now sign up and sign in with a mobile number and a password.
-4. Stop the server for the day with:
-   powershell -ExecutionPolicy Bypass -File .\ops\stop-salon-server.ps1
-
-When a customer signs up for the first time
-
-- Nothing is sent to the customer's phone. There is no SMS code at all.
-- The customer types their own name, mobile number and password on the phone.
-- The password must be 10 to 20 characters with at least one letter and one
-  number. Tell them to remember it, because no code can be sent to recover it.
-- If they forget it, the owner sets a new password in Owner > Customers.
-- The shortcut ops\show-last-code.cmd still exists from the old SMS days and is
-  no longer part of any sign-in. You never need to run it.
-
-Notes about the free tunnel
-
-- The free address changes each time you restart the server, and the laptop
-  publishes the new one automatically. The permanent link above and the phone
-  apps follow it, so in normal use there is nothing to copy by hand.
-- The customers' permanent link is https://slowyy0477.github.io/barbor_shop/ .
-  It is free and it does not change.
-- Cloudflare is the usual free link, but it is not the only one. If it is busy
-  the laptop opens a backup free link by itself (serveo over SSH, then
-  Tunnelmole over HTTPS). Nothing has to be typed or chosen.
-- While the salon is open the laptop checks the link every couple of minutes.
-  If it stops answering, a fresh link is opened and published automatically,
-  and the phones follow it on their own.
-- If no internet link is available at all, phones on the same Wi-Fi can use the
-  "Same Wi-Fi" address that Check Salon Server prints. Double-click
-  ops\refresh-public-url.cmd to try the free internet link again.
-- Keep the laptop awake and online while the salon is open.
-- Only share the phone address with the salon. Never share the file
-  ops\salon-server.local.json.
+- Coming back later: the same mobile number and the same password. The phone
+  stays signed in, so they normally do not type it again.
+- Five wrong password tries pause sign in for 15 minutes.
+- Forgot the password? Only the owner can set a new one:
+  Owner > Customers > Reset password.
 
 
-IMPORTANT BEFORE SHARING WITH MANY CUSTOMERS
+OWNER MENU (customers never see it)
 
-- The single-phone APK stores each phone's data separately. Shared balances and
-  bookings need Part 2 (the laptop server).
-- Customers and the owner sign in with a mobile number and a password. No SMS
-  provider, no message bill and no code to read out. Card payments and bank
-  payouts still need owner accounts with those providers, and deposits are
-  approved by the owner by hand.
-- Free services have limits. A laptop server is free but only runs while the
-  laptop is on.
+1. Tap the round salon logo at the top of the app 5 times quickly.
+2. Type the owner access code and tap Sign in.
+   The first code is 530146. Change it on your first day, because it is the code
+   the app was built with.
+3. Tap Lock when you finish.
 
-Current APK checksum (SHA-256)
 
-Salon-App-v1.0.0.apk (219,430 bytes)
-3a0f99247e2d1131dce8963d4de71ef191eef0a7b2b7173e0517ae8fd111c1b5
+SET THIS UP ONCE
 
-Do not share the release keystore, signing properties, database password,
-provider token or OTP code in chat.
+1. Owner > Settings
+   - Salon name, tagline, phone, address, opening hours.
+   - Phone app name and logo (shows on the launch screen and the home screen
+     icon).
+   - Owner access code (change it from 530146).
+2. Owner > Services & staff
+   - Your services with prices and durations, and your barbers.
+   - Haircut styles: add a photo, name, price and description. Customers see
+     them on the home screen with a "Book this look" button.
+3. Owner > Settings
+   - Wallet top-up amount, first deposit bonus, expiry days, reminder cycle and
+     referral reward.
+   - Every amount is in PKR and can be changed at any time. Changing a price
+     never changes an old bill.
+
+
+WHAT THE APP DOES BY ITSELF
+
+- A completed visit updates the customer's history and works out the next
+  suggested visit date.
+- A wallet payment is split into paid credit and bonus credit. The bonus is a
+  one-time new customer benefit and is never given twice.
+- A confirmed booking holds the slot, and the customer can book again in one tap
+  from a reminder.
+- A referral reward stays Pending until the new customer completes a paid visit.
+- Old bills and wallet entries are never deleted. A mistake is fixed with a
+  reversal entry, and every manual adjustment needs a reason.
+
+
+KEEP A COPY OF YOUR DATA
+
+Everything lives on that one phone. If the phone is lost, reset or uninstalled,
+the data goes with it.
+
+- Owner > Settings > Export workspace data writes a copy you can keep.
+- Do that at the end of each week and keep the file somewhere safe.
+
+
+KEEP THESE PRIVATE
+
+- The owner access code.
+- Customer names, mobile numbers and wallet history.
+- The release keystore and android\release-signing.properties on the computer.
+  The same key is needed for every future update of the app, so back them up.
+
+
+THIS BUILD
+
+Salon-App-v1.0.0.apk (218,507 bytes)
+SHA-256 e89caa1d138b979fbc79ab6ea434dd719d103012f37c095a5762876d7ee65f8a

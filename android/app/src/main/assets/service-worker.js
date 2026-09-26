@@ -14,9 +14,9 @@ self.addEventListener("fetch", (event) => {
   // Never cache API responses. Wallet balances, bookings and authentication
   // state must always come from the server or show an explicit offline error.
   if (path.startsWith("/api/")) return;
-  // The published salon address changes whenever the laptop restarts its free
-  // tunnel, so it is always read from the network.
-  if (path.endsWith("/api.json") || path.endsWith("/actuator/health")) return;
+  // A health probe decides whether an optional local server is reachable, so it
+  // is never served from the cache.
+  if (path.endsWith("/actuator/health")) return;
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
     const copy = response.clone(); caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)); return response;
   }).catch(() => caches.match("./index.html"))));

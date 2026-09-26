@@ -14,8 +14,11 @@ sides stay byte-compatible.
 | Must contain | at least one letter **and** at least one digit |
 | Must not be | only letters, only digits, or equal to the mobile number |
 
-password any more. Existing PIN rows stay readable only so an old installed
-client can be told to upgrade; new accounts must use a password.
+The owner password is chosen and kept by the salon owner on their own computer.
+It is never written into these documents or into any file that is published.
+A 4-6 digit PIN is **not** a valid password any more. Existing PIN rows stay
+readable only so an old installed client can be told to upgrade; new accounts
+must use a password.
 
 ## 2. Endpoints
 
